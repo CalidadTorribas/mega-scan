@@ -33,6 +33,57 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Cargar html5-qrcode de forma más robusta -->
+    <script>
+        console.log('🔄 Iniciando carga de html5-qrcode...');
+        
+        window.qrLibraryLoadPromise = new Promise((resolve, reject) => {
+            // Verificar si ya está cargado
+            if (typeof Html5Qrcode !== 'undefined') {
+                console.log('✅ Html5Qrcode ya disponible');
+                resolve(Html5Qrcode);
+                return;
+            }
+
+            // Crear script element
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js';
+            script.async = true;
+            
+            script.onload = function() {
+                console.log('✅ Script html5-qrcode cargado exitosamente');
+                
+                // Verificar disponibilidad con timeout
+                let attempts = 0;
+                const maxAttempts = 20;
+                
+                function checkAvailability() {
+                    attempts++;
+                    if (typeof Html5Qrcode !== 'undefined') {
+                        console.log('✅ Html5Qrcode disponible después de', attempts, 'intentos');
+                        window.qrCodeLibrary = Html5Qrcode;
+                        resolve(Html5Qrcode);
+                    } else if (attempts < maxAttempts) {
+                        setTimeout(checkAvailability, 100);
+                    } else {
+                        console.error('❌ Html5Qrcode no disponible después de', maxAttempts, 'intentos');
+                        reject(new Error('Html5Qrcode no disponible después de cargar'));
+                    }
+                }
+                
+                checkAvailability();
+            };
+            
+            script.onerror = function(error) {
+                console.error('❌ Error cargando script html5-qrcode:', error);
+                reject(new Error('Error cargando html5-qrcode'));
+            };
+            
+            document.head.appendChild(script);
+            console.log('⏳ Script html5-qrcode agregado al DOM');
+        });
+    </script>
 
     <style>
         * {
@@ -143,9 +194,8 @@
         let scannedProduct = null;
         let productMaterials = null;
         let activeCodeReader = null;
-        let currentStream = null;
         let qrCodeLibrary = null;
-        let cameraPermissionGranted = false;
+        let cameraPermissionStatus = 'unknown'; // 'unknown', 'granted', 'denied', 'prompt'
 
         const appRoot = document.getElementById('app-root');
 
@@ -166,8 +216,34 @@
             return true;
         }
 
+        // Verificar estado de permisos sin solicitar acceso
+        async function checkCameraPermissionStatus() {
+            try {
+                if (navigator.permissions) {
+                    const permission = await navigator.permissions.query({ name: 'camera' });
+                    cameraPermissionStatus = permission.state;
+                    console.log('🔍 Estado de permisos de cámara:', permission.state);
+                    
+                    // Escuchar cambios en permisos
+                    permission.onchange = () => {
+                        cameraPermissionStatus = permission.state;
+                        console.log('🔄 Permisos de cámara cambiaron a:', permission.state);
+                    };
+                    
+                    return permission.state;
+                } else {
+                    console.log('⚠️ API de permisos no disponible');
+                    return 'unknown';
+                }
+            } catch (error) {
+                console.log('⚠️ Error verificando permisos:', error);
+                return 'unknown';
+            }
+        }
+
         async function requestCameraPermission() {
             try {
+                console.log('📹 Solicitando permisos de cámara...');
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: "environment",
@@ -175,60 +251,40 @@
                         height: { ideal: 720 }
                     } 
                 });
+                
                 // Cerrar stream inmediatamente después de verificar permisos
                 stream.getTracks().forEach(track => track.stop());
-                cameraPermissionGranted = true;
+                cameraPermissionStatus = 'granted';
+                console.log('✅ Permisos de cámara otorgados');
                 return true;
             } catch (error) {
-                console.error('Error de permisos de cámara:', error);
-                cameraPermissionGranted = false;
+                console.error('❌ Error de permisos de cámara:', error);
+                cameraPermissionStatus = 'denied';
                 throw error;
             }
         }
 
-        function loadQrCodeLibrary() {
-            return new Promise((resolve, reject) => {
-                if (typeof Html5Qrcode !== 'undefined') {
-                    console.log('✅ Html5Qrcode ya disponible');
-                    qrCodeLibrary = Html5Qrcode;
-                    resolve(Html5Qrcode);
-                    return;
-                }
-                
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js';
-                
-                script.onload = function() {
-                    console.log('✅ Script html5-qrcode cargado');
-                    
-                    // Esperar un poco para que la librería se inicialice
-                    setTimeout(() => {
-                        if (typeof Html5Qrcode !== 'undefined') {
-                            console.log('✅ Html5Qrcode disponible');
-                            qrCodeLibrary = Html5Qrcode;
-                            resolve(Html5Qrcode);
-                        } else {
-                            console.error('❌ Html5Qrcode no disponible después de cargar script');
-                            reject(new Error('Html5Qrcode no disponible después de la carga'));
-                        }
-                    }, 500);
-                };
-                
-                script.onerror = function() {
-                    console.error('❌ Error cargando html5-qrcode script');
-                    reject(new Error('Error cargando html5-qrcode'));
-                };
-                
-                console.log('⏳ Cargando html5-qrcode...');
-                document.head.appendChild(script);
-            });
+        async function ensureQrLibraryLoaded() {
+            if (window.qrCodeLibrary) {
+                return window.qrCodeLibrary;
+            }
+            
+            try {
+                console.log('⏳ Esperando carga de html5-qrcode...');
+                const library = await window.qrLibraryLoadPromise;
+                window.qrCodeLibrary = library;
+                return library;
+            } catch (error) {
+                console.error('❌ Error cargando librería:', error);
+                throw new Error('No se pudo cargar la librería del escáner. Verifica tu conexión a internet.');
+            }
         }
 
         function getErrorMessage(error) {
             console.error('Detalle del error:', error);
             
             if (error.name === 'NotAllowedError') {
-                return 'Permisos de cámara denegados. Por favor, permite el acceso a la cámara en la configuración de tu navegador.';
+                return 'Permisos de cámara denegados. Permite el acceso en la configuración de tu navegador y recarga la página.';
             } else if (error.name === 'NotFoundError') {
                 return 'No se encontró ninguna cámara en el dispositivo.';
             } else if (error.name === 'NotSupportedError') {
@@ -239,8 +295,10 @@
                 return 'Las restricciones de cámara no pueden ser satisfechas.';
             } else if (error.message && error.message.includes('HTTPS')) {
                 return 'HTTPS requerido para acceso a la cámara en móviles.';
-            } else if (error.message && error.message.includes('Html5Qrcode')) {
-                return 'Error cargando el escáner. Verifica tu conexión a internet.';
+            } else if (error.message && error.message.includes('html5-qrcode')) {
+                return 'Error cargando el escáner. Verifica tu conexión a internet y recarga la página.';
+            } else if (error.message && error.message.includes('librería')) {
+                return 'Error cargando el escáner. Verifica tu conexión a internet y recarga la página.';
             }
             
             return 'Error accediendo a la cámara: ' + (error.message || 'Error desconocido');
@@ -273,11 +331,15 @@
                 </div>
                 
                 <div class="mt-16 text-center">
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.2.0</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.3.0</p>
                 </div>
             </div>`;
 
-        const renderScannerView = () => `
+        const renderScannerView = () => {
+            // Determinar si necesitamos mostrar el botón de activación
+            const needsActivation = cameraPermissionStatus !== 'granted';
+            
+            return `
             <div class="flex flex-col h-full flex-1 slide-up">
                 <header class="p-4 flex justify-between items-center text-slate-800 dark:text-white backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-b border-slate-200/50 dark:border-slate-700/50">
                     <button data-action="go-home" class="focus-ring p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200 active:scale-95">
@@ -288,21 +350,29 @@
                 </header>
                 
                 <div class="relative flex-1 bg-black flex items-center justify-center mx-4 mt-4 rounded-2xl overflow-hidden shadow-2xl">
-                    <div id="qr-reader" class="w-full h-full bg-black ${!cameraPermissionGranted ? 'hidden' : ''}"></div>
+                    <div id="qr-reader" class="w-full h-full bg-black ${needsActivation ? 'hidden' : ''}"></div>
                     
-                    ${!cameraPermissionGranted ? `
+                    ${needsActivation ? `
                         <div class="absolute inset-0 flex flex-col items-center justify-center p-6 text-white text-center">
                             <div class="mb-6">
                                 ${icons.camera.replace('w-6 h-6', 'w-16 h-16')}
                             </div>
                             <h3 class="text-xl font-semibold mb-4">Activar Cámara</h3>
                             <p class="text-white/80 mb-6 text-sm leading-relaxed max-w-xs">
-                                Para escanear códigos de barras necesitamos acceso a tu cámara. 
-                                Presiona el botón para activarla.
+                                ${cameraPermissionStatus === 'denied' 
+                                    ? 'Los permisos fueron denegados. Ve a la configuración de tu navegador, permite el acceso a la cámara y recarga la página.'
+                                    : 'Para escanear códigos de barras necesitamos acceso a tu cámara.'
+                                }
                             </p>
-                            <button data-action="activate-camera" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 pulse-button">
-                                ${icons.play} Activar Cámara
-                            </button>
+                            ${cameraPermissionStatus !== 'denied' ? `
+                                <button data-action="activate-camera" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 pulse-button">
+                                    ${icons.play} Activar Cámara
+                                </button>
+                            ` : `
+                                <button onclick="location.reload()" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
+                                    🔄 Recargar Página
+                                </button>
+                            `}
                         </div>
                     ` : `
                         <div class="absolute inset-0 flex items-center justify-center">
@@ -318,7 +388,10 @@
                     `}
                     
                     <div id="scanner-status" class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent text-white text-center text-sm font-medium">
-                        ${cameraPermissionGranted ? 'Buscando código de barras...' : 'Presiona "Activar Cámara" para comenzar'}
+                        ${needsActivation 
+                            ? (cameraPermissionStatus === 'denied' ? 'Permisos denegados - Recarga la página' : 'Presiona "Activar Cámara" para comenzar')
+                            : 'Preparando escáner...'
+                        }
                     </div>
                 </div>
                 
@@ -347,6 +420,7 @@
                     </form>
                 </div>
             </div>`;
+        };
 
         const renderLoadingView = (message) => `
             <div class="flex flex-col items-center justify-center h-full text-center p-8 flex-1 relative fade-in">
@@ -369,13 +443,13 @@
                 </div>
                 <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Error</h3>
                 <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-sm leading-relaxed">${message}</p>
-                <div class="flex gap-3">
+                <div class="flex gap-3 flex-wrap justify-center">
                     <button data-action="go-home" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
                         Volver al Inicio
                     </button>
-                    ${appState === 'SCANNER' ? `
-                        <button data-action="retry-scanner" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
-                            Reintentar
+                    ${message.includes('conexión') || message.includes('librería') ? `
+                        <button onclick="location.reload()" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
+                            Recargar Página
                         </button>
                     ` : ''}
                 </div>
@@ -536,7 +610,7 @@
                         break;
                     case 'SCANNER':
                         appRoot.innerHTML = renderScannerView();
-                        if (cameraPermissionGranted) {
+                        if (cameraPermissionStatus === 'granted') {
                             setTimeout(initializeScanner, 300);
                         }
                         break;
@@ -583,7 +657,6 @@
                 switch (action) {
                     case 'navigate-scanner':
                         appState = 'SCANNER';
-                        cameraPermissionGranted = false; // Resetear estado de permisos
                         render();
                         break;
                     case 'activate-camera':
@@ -594,7 +667,6 @@
                         appState = 'HOME';
                         scannedProduct = null;
                         productMaterials = null;
-                        cameraPermissionGranted = false;
                         render();
                         break;
                     case 'back-to-product':
@@ -608,11 +680,6 @@
                         break;
                     case 'manual-submit':
                         handleManualSubmit(event);
-                        break;
-                    case 'retry-scanner':
-                        cameraPermissionGranted = false;
-                        appState = 'SCANNER';
-                        render();
                         break;
                 }
             } catch (error) {
@@ -638,13 +705,10 @@
                 
                 if (status) status.textContent = 'Cargando escáner...';
                 
-                // Cargar librería si no está cargada
-                if (!qrCodeLibrary) {
-                    await loadQrCodeLibrary();
-                }
+                // Asegurar que la librería esté cargada
+                await ensureQrLibraryLoaded();
                 
                 // Actualizar la vista para mostrar el escáner
-                cameraPermissionGranted = true;
                 render();
                 
                 // Inicializar el escáner después de actualizar la vista
@@ -690,7 +754,7 @@
                 return;
             }
 
-            if (!cameraPermissionGranted) {
+            if (cameraPermissionStatus !== 'granted') {
                 console.log('Permisos de cámara no otorgados');
                 return;
             }
@@ -699,20 +763,21 @@
                 status.textContent = 'Iniciando cámara...';
                 
                 // Asegurar que tenemos la librería cargada
-                if (!qrCodeLibrary) {
-                    console.log('Cargando librería html5-qrcode...');
-                    await loadQrCodeLibrary();
-                }
+                const QrCodeLibrary = await ensureQrLibraryLoaded();
                 
                 console.log('Creando instancia de Html5Qrcode...');
-                const html5QrCode = new qrCodeLibrary("qr-reader");
+                const html5QrCode = new QrCodeLibrary("qr-reader");
                 activeCodeReader = html5QrCode;
 
                 const config = {
                     fps: 10,
                     qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0,
-                    formatsToSupport: [
+                    aspectRatio: 1.0
+                };
+
+                // Verificar si Html5QrcodeSupportedFormats está disponible
+                if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
+                    config.formatsToSupport = [
                         Html5QrcodeSupportedFormats.QR_CODE,
                         Html5QrcodeSupportedFormats.UPC_A,
                         Html5QrcodeSupportedFormats.UPC_E,
@@ -720,15 +785,15 @@
                         Html5QrcodeSupportedFormats.EAN_8,
                         Html5QrcodeSupportedFormats.CODE_128,
                         Html5QrcodeSupportedFormats.CODE_39
-                    ]
-                };
+                    ];
+                }
 
                 status.textContent = 'Accediendo a la cámara...';
                 console.log('Obteniendo dispositivos de cámara...');
 
                 // Intentar obtener cámaras específicas
                 try {
-                    const devices = await Html5Qrcode.getCameras();
+                    const devices = await QrCodeLibrary.getCameras();
                     console.log('Cámaras encontradas:', devices.length);
                     
                     if (devices && devices.length) {
@@ -911,10 +976,14 @@
             }
         }
 
-        function initApp() {
+        async function initApp() {
             console.log('🚀 Inicializando aplicación...');
             
             setTimeout(hideSplashScreen, 1500);
+            
+            // Verificar estado inicial de permisos de cámara
+            await checkCameraPermissionStatus();
+            
             render();
             
             document.addEventListener('click', handleEvents);
@@ -931,16 +1000,6 @@
                     stopScanner();
                 }
             });
-            
-            // Precargar la librería html5-qrcode cuando la app está lista
-            setTimeout(() => {
-                if (!qrCodeLibrary) {
-                    console.log('⏳ Precargando librería html5-qrcode...');
-                    loadQrCodeLibrary().catch(err => {
-                        console.log('Error precargando librería (no crítico):', err);
-                    });
-                }
-            }, 2000);
             
             console.log('✅ Aplicación inicializada');
         }
