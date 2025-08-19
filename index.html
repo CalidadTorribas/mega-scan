@@ -190,7 +190,7 @@ window.addEventListener('load', function() {
                 </div>
                 
                 <div class="mt-16 text-center">
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.1.0</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.1.1</p>
                 </div>
             </div>`;
 
@@ -528,18 +528,38 @@ function initializeScanner() {
     status.textContent = 'Cargando escáner...';
 
     // Esperar a que se cargue la librería
-    function waitForLibrary() {
-        if (typeof Html5Qrcode !== 'undefined') {
-            console.log('✅ Html5Qrcode disponible');
-            startScanner();
-        } else if (window.qrCodeLibraryLoaded) {
-            console.log('✅ Librería marcada como cargada, reintentando...');
-            setTimeout(waitForLibrary, 100);
+	function waitForLibrary() {
+    // Verificar múltiples nombres posibles
+    let QrLib = null;
+    if (typeof Html5Qrcode !== 'undefined') {
+        QrLib = Html5Qrcode;
+        console.log('✅ Usando Html5Qrcode');
+    } else if (typeof window.Html5Qrcode !== 'undefined') {
+        QrLib = window.Html5Qrcode;
+        console.log('✅ Usando window.Html5Qrcode');
+    } else if (typeof QrScanner !== 'undefined') {
+        QrLib = QrScanner;
+        console.log('✅ Usando QrScanner');
+    } else {
+        console.log('⏳ Esperando librería... Intentos:', (window.libraryAttempts || 0));
+        window.libraryAttempts = (window.libraryAttempts || 0) + 1;
+        
+        if (window.libraryAttempts < 20) {
+            setTimeout(waitForLibrary, 500);
+            return;
         } else {
-            console.log('⏳ Esperando a que se cargue html5-qrcode...');
-            setTimeout(waitForLibrary, 200);
+            console.error('❌ Timeout esperando librería');
+            status.textContent = 'Error: No se pudo cargar el escáner';
+            return;
         }
     }
+    
+    if (QrLib) {
+        console.log('✅ Librería encontrada, iniciando escáner');
+        window.Html5Qrcode = QrLib; // Asegurar que esté disponible
+        startScanner();
+    }
+}
 
     function startScanner() {
         try {
