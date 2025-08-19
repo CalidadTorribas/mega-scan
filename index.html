@@ -34,85 +34,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Cargar html5-qrcode desde JSDELIVR para evitar CORS -->
-    <script>
-        console.log('🔄 Iniciando carga de html5-qrcode...');
-        
-        window.qrLibraryLoadPromise = new Promise((resolve, reject) => {
-            // Verificar si ya está cargado
-            if (typeof Html5Qrcode !== 'undefined') {
-                console.log('✅ Html5Qrcode ya disponible');
-                resolve(Html5Qrcode);
-                return;
-            }
-
-            // Lista de CDNs alternativos para intentar
-            const cdnUrls = [
-                'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
-                'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
-                'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
-            ];
-            
-            let currentIndex = 0;
-            
-            function tryLoadFromCDN(index) {
-                if (index >= cdnUrls.length) {
-                    reject(new Error('No se pudo cargar html5-qrcode desde ningún CDN'));
-                    return;
-                }
-                
-                const script = document.createElement('script');
-                script.src = cdnUrls[index];
-                script.async = true;
-                script.crossOrigin = 'anonymous'; // Agregar crossOrigin
-                
-                console.log(`⏳ Intentando cargar desde: ${cdnUrls[index]}`);
-                
-                script.onload = function() {
-                    console.log(`✅ Script cargado desde: ${cdnUrls[index]}`);
-                    
-                    // Verificar disponibilidad con timeout
-                    let attempts = 0;
-                    const maxAttempts = 30;
-                    
-                    function checkAvailability() {
-                        attempts++;
-                        if (typeof Html5Qrcode !== 'undefined') {
-                            console.log('✅ Html5Qrcode disponible después de', attempts, 'intentos');
-                            window.qrCodeLibrary = Html5Qrcode;
-                            resolve(Html5Qrcode);
-                        } else if (attempts < maxAttempts) {
-                            setTimeout(checkAvailability, 100);
-                        } else {
-                            console.warn(`⚠️ Html5Qrcode no disponible desde ${cdnUrls[index]}, probando siguiente...`);
-                            document.head.removeChild(script);
-                            tryLoadFromCDN(index + 1);
-                        }
-                    }
-                    
-                    checkAvailability();
-                };
-                
-                script.onerror = function(error) {
-                    console.warn(`⚠️ Error cargando desde ${cdnUrls[index]}:`, error);
-                    document.head.removeChild(script);
-                    tryLoadFromCDN(index + 1);
-                };
-                
-                document.head.appendChild(script);
-            }
-            
-            tryLoadFromCDN(0);
-        });
-        
-        // También intentar cargar directamente sin Promise para casos edge
-        window.addEventListener('load', function() {
-            if (!window.qrCodeLibrary && typeof Html5Qrcode !== 'undefined') {
-                window.qrCodeLibrary = Html5Qrcode;
-                console.log('✅ Html5Qrcode disponible directamente después del load');
-            }
-        });
-    </script>
+    <!-- Cargar html5-qrcode desde jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js" async crossorigin="anonymous"></script>
 
     <style>
         * {
@@ -159,6 +82,20 @@
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
+        }
+
+        /* Estilos específicos para el escáner */
+        #qr-reader {
+            border: none !important;
+        }
+
+        #qr-reader > div {
+            border: none !important;
+        }
+
+        #qr-reader video {
+            border-radius: 1rem !important;
+            object-fit: cover !important;
         }
     </style>
 </head>
@@ -223,8 +160,8 @@
         let scannedProduct = null;
         let productMaterials = null;
         let activeCodeReader = null;
-        let qrCodeLibrary = null;
-        let cameraPermissionStatus = 'unknown'; // 'unknown', 'granted', 'denied', 'prompt'
+        let cameraPermissionStatus = 'unknown';
+        let isScanning = false;
 
         const appRoot = document.getElementById('app-root');
 
@@ -245,7 +182,6 @@
             return true;
         }
 
-        // Verificar estado de permisos sin solicitar acceso
         async function checkCameraPermissionStatus() {
             try {
                 if (navigator.permissions) {
@@ -253,7 +189,6 @@
                     cameraPermissionStatus = permission.state;
                     console.log('🔍 Estado de permisos de cámara:', permission.state);
                     
-                    // Escuchar cambios en permisos
                     permission.onchange = () => {
                         cameraPermissionStatus = permission.state;
                         console.log('🔄 Permisos de cámara cambiaron a:', permission.state);
@@ -276,8 +211,8 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: "environment",
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        width: { min: 320, ideal: 640, max: 1920 },
+                        height: { min: 240, ideal: 480, max: 1080 }
                     } 
                 });
                 
@@ -293,30 +228,28 @@
             }
         }
 
-        async function ensureQrLibraryLoaded() {
-            if (window.qrCodeLibrary) {
-                console.log('✅ Librería ya disponible desde caché');
-                return window.qrCodeLibrary;
-            }
-            
-            try {
-                console.log('⏳ Esperando carga de html5-qrcode...');
-                const library = await window.qrLibraryLoadPromise;
-                window.qrCodeLibrary = library;
-                console.log('✅ Librería cargada y disponible');
-                return library;
-            } catch (error) {
-                console.error('❌ Error cargando librería:', error);
-                
-                // Último intento: verificar si está disponible globalmente
+        function waitForHtml5Qrcode() {
+            return new Promise((resolve, reject) => {
                 if (typeof Html5Qrcode !== 'undefined') {
-                    console.log('✅ Librería encontrada globalmente como fallback');
-                    window.qrCodeLibrary = Html5Qrcode;
-                    return Html5Qrcode;
+                    resolve(Html5Qrcode);
+                    return;
                 }
                 
-                throw new Error('La librería del escáner no se pudo cargar. Esto puede ser debido a bloqueo de contenido, adblocker o problemas de red.');
-            }
+                let attempts = 0;
+                const maxAttempts = 50;
+                
+                const checkInterval = setInterval(() => {
+                    attempts++;
+                    if (typeof Html5Qrcode !== 'undefined') {
+                        clearInterval(checkInterval);
+                        console.log('✅ Html5Qrcode disponible después de', attempts, 'intentos');
+                        resolve(Html5Qrcode);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        reject(new Error('Html5Qrcode no se cargó después de ' + maxAttempts + ' intentos'));
+                    }
+                }, 200);
+            });
         }
 
         function getErrorMessage(error) {
@@ -334,8 +267,8 @@
                 return 'Las restricciones de cámara no pueden ser satisfechas.';
             } else if (error.message && error.message.includes('HTTPS')) {
                 return 'HTTPS requerido para acceso a la cámara en móviles.';
-            } else if (error.message && (error.message.includes('librería') || error.message.includes('escáner') || error.message.includes('CDN'))) {
-                return 'No se pudo cargar el escáner. Puede ser debido a un adblocker o restricciones de red. Desactiva tu adblocker y recarga la página.';
+            } else if (error.message && error.message.includes('Html5Qrcode')) {
+                return 'No se pudo cargar el escáner. Recarga la página para reintentar.';
             }
             
             return 'Error inesperado: ' + (error.message || 'Error desconocido');
@@ -349,7 +282,6 @@
                 
                 <div class="mb-8 relative z-10">
                     <div class="w-28 h-28 bg-white rounded-3xl flex items-center justify-center shadow-lg mb-6 p-2">
-                        <!-- Logo Mega||Scan -->
                         <div class="w-full h-full flex items-center justify-center text-2xl font-bold">
                             <span class="text-blue-600">M</span>
                             <span class="text-blue-500 mx-1">||</span>
@@ -368,12 +300,11 @@
                 </div>
                 
                 <div class="mt-16 text-center">
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.3.1</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.4.0</p>
                 </div>
             </div>`;
 
         const renderScannerView = () => {
-            // Determinar si necesitamos mostrar el botón de activación
             const needsActivation = cameraPermissionStatus !== 'granted';
             
             return `
@@ -412,14 +343,14 @@
                             `}
                         </div>
                     ` : `
-                        <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div class="w-3/4 max-w-xs aspect-square relative">
                                 <div class="absolute inset-0 border-2 border-white/30 rounded-2xl"></div>
                                 <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-2xl"></div>
                                 <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-2xl"></div>
                                 <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-2xl"></div>
                                 <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-2xl"></div>
-                                <div class="scanner-overlay absolute inset-0 rounded-2xl"></div>
+                                ${isScanning ? '<div class="scanner-overlay absolute inset-0 rounded-2xl"></div>' : ''}
                             </div>
                         </div>
                     `}
@@ -484,14 +415,13 @@
                     <button data-action="go-home" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
                         Volver al Inicio
                     </button>
-                    ${message.includes('adblocker') || message.includes('librería') || message.includes('escáner') || message.includes('conexión') ? `
-                        <button onclick="location.reload()" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
-                            Recargar Página
-                        </button>
-                    ` : ''}
+                    <button onclick="location.reload()" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
+                        Recargar Página
+                    </button>
                 </div>
             </div>`;
 
+        // Resto de las vistas (Product y Materials) permanecen igual...
         const renderProductView = (product) => `
             <div class="flex flex-col h-full flex-1 slide-up">
                 <header class="p-6 text-center relative bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 border-b border-slate-200/50 dark:border-slate-700/50">
@@ -617,7 +547,7 @@
 
         // --- FUNCIONES AUXILIARES ---
         function generatePlaceholderImage() {
-            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M1Y5OEg4N1Y3NFoiIGZpbGw9IiM5Q0E0QUYiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZGlzcGxheTpibG9jazsgbWFyZ2luOmF1dG87Ij4KPHBhdGggZD0iTTMgNXYxNCIgc3Ryb2tlPSIjNjM2NTc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOCA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNyA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi/+CjxwYXRoIGQ9Ik0yMSA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo8L3N2Zz4K';
+            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M1Y5OEg4N1Y3NFoiIGZpbGw9IiM5Q0E0QUYiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZGlzcGxheTpibG9jazsgbWFyZ2luOmF1dG87Ij4KPHBhdGggZD0iTTMgNXYxNCIgc3Ryb2tlPSIjNjM2NTc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOCA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNyA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0yMSA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo8L3N2Zz4K';
         }
 
         function showNotification(message, type = 'info') {
@@ -648,7 +578,7 @@
                     case 'SCANNER':
                         appRoot.innerHTML = renderScannerView();
                         if (cameraPermissionStatus === 'granted') {
-                            setTimeout(initializeScanner, 300);
+                            setTimeout(initializeScanner, 500);
                         }
                         break;
                     case 'LOADING':
@@ -700,7 +630,7 @@
                         await activateCamera();
                         break;
                     case 'go-home':
-                        stopScanner();
+                        await stopScanner();
                         appState = 'HOME';
                         scannedProduct = null;
                         productMaterials = null;
@@ -731,23 +661,18 @@
             try {
                 if (status) status.textContent = 'Verificando compatibilidad...';
                 
-                // Verificar compatibilidad del navegador
                 isMobileCompatible();
                 
                 if (status) status.textContent = 'Solicitando permisos de cámara...';
                 
-                // Solicitar permisos de cámara
                 await requestCameraPermission();
                 
                 if (status) status.textContent = 'Cargando escáner...';
                 
-                // Asegurar que la librería esté cargada
-                await ensureQrLibraryLoaded();
+                await waitForHtml5Qrcode();
                 
-                // Actualizar la vista para mostrar el escáner
                 render();
                 
-                // Inicializar el escáner después de actualizar la vista
                 setTimeout(initializeScanner, 500);
                 
             } catch (error) {
@@ -757,7 +682,6 @@
                 if (status) status.textContent = errorMessage;
                 showNotification(errorMessage, 'error');
                 
-                // Mostrar vista de error con opción de reintentar
                 setTimeout(() => {
                     appState = 'ERROR';
                     appRoot.innerHTML = renderErrorView(errorMessage);
@@ -795,47 +719,58 @@
                 return;
             }
 
+            // Verificar si ya hay un escáner activo
+            if (activeCodeReader) {
+                console.log('Escáner ya activo, deteniéndolo primero...');
+                await stopScanner();
+            }
+
             try {
                 status.textContent = 'Iniciando cámara...';
                 
-                // Asegurar que tenemos la librería cargada
-                const QrCodeLibrary = await ensureQrLibraryLoaded();
+                await waitForHtml5Qrcode();
                 
-                console.log('Creando instancia de Html5Qrcode...');
-                const html5QrCode = new QrCodeLibrary("qr-reader");
+                console.log('Creando nueva instancia de Html5Qrcode...');
+                const html5QrCode = new Html5Qrcode("qr-reader");
                 activeCodeReader = html5QrCode;
 
                 const config = {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0
+                    fps: 15,
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        const minEdgePercentage = 0.7;
+                        const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                        const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                        return {
+                            width: qrboxSize,
+                            height: qrboxSize
+                        };
+                    },
+                    aspectRatio: 1.777778
                 };
-
-                // Verificar si Html5QrcodeSupportedFormats está disponible
-                if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
-                    config.formatsToSupport = [
-                        Html5QrcodeSupportedFormats.QR_CODE,
-                        Html5QrcodeSupportedFormats.UPC_A,
-                        Html5QrcodeSupportedFormats.UPC_E,
-                        Html5QrcodeSupportedFormats.EAN_13,
-                        Html5QrcodeSupportedFormats.EAN_8,
-                        Html5QrcodeSupportedFormats.CODE_128,
-                        Html5QrcodeSupportedFormats.CODE_39
-                    ];
-                }
 
                 status.textContent = 'Accediendo a la cámara...';
                 console.log('Obteniendo dispositivos de cámara...');
 
-                // Intentar obtener cámaras específicas
                 try {
-                    const devices = await QrCodeLibrary.getCameras();
+                    const devices = await Html5Qrcode.getCameras();
                     console.log('Cámaras encontradas:', devices.length);
                     
                     if (devices && devices.length) {
-                        // Preferir cámara trasera (la última en la lista generalmente es trasera)
-                        const cameraId = devices[devices.length - 1].id;
-                        console.log('Usando cámara:', cameraId);
+                        let cameraId = devices[devices.length - 1].id;
+                        
+                        // Buscar específicamente cámara trasera
+                        const backCamera = devices.find(device => 
+                            device.label.toLowerCase().includes('back') || 
+                            device.label.toLowerCase().includes('rear') ||
+                            device.label.toLowerCase().includes('environment')
+                        );
+                        
+                        if (backCamera) {
+                            cameraId = backCamera.id;
+                            console.log('Usando cámara trasera:', backCamera.label);
+                        } else {
+                            console.log('Usando última cámara disponible:', devices[devices.length - 1].label);
+                        }
                         
                         await html5QrCode.start(
                             cameraId,
@@ -843,6 +778,9 @@
                             onScanSuccess,
                             onScanFailure
                         );
+                        
+                        isScanning = true;
+                        render(); // Re-render para mostrar el overlay de scanning
                         
                         status.textContent = 'Buscando código de barras...';
                         showNotification('Escáner activado correctamente', 'success');
@@ -853,13 +791,15 @@
                 } catch (cameraError) {
                     console.log('Error con cámaras específicas, intentando con constrains genéricos...');
                     
-                    // Fallback a constrains genéricos
                     await html5QrCode.start(
                         { facingMode: "environment" },
                         config,
                         onScanSuccess,
                         onScanFailure
                     );
+                    
+                    isScanning = true;
+                    render(); // Re-render para mostrar el overlay de scanning
                     
                     status.textContent = 'Buscando código de barras...';
                     showNotification('Escáner activado', 'success');
@@ -872,8 +812,8 @@
                 if (status) status.textContent = errorMessage;
                 showNotification(errorMessage, 'error');
                 
-                // Limpiar el activeCodeReader si hay error
                 activeCodeReader = null;
+                isScanning = false;
             }
         }
 
@@ -884,23 +824,21 @@
         }
 
         function onScanFailure(error) {
-            // Error silencioso durante escaneo - normal que ocurra
+            // Error silencioso durante escaneo - es normal que ocurra constantemente
         }
 
-        function stopScanner() {
+        async function stopScanner() {
+            isScanning = false;
+            
             if (activeCodeReader) {
                 try {
                     console.log('Deteniendo escáner...');
-                    activeCodeReader.stop().then(() => {
-                        console.log('✅ Escáner detenido correctamente');
-                        activeCodeReader.clear();
-                    }).catch(err => {
-                        console.error('Error deteniendo el escáner:', err);
-                    }).finally(() => {
-                        activeCodeReader = null;
-                    });
-                } catch (error) {
-                    console.error('Error deteniendo el escáner:', error);
+                    await activeCodeReader.stop();
+                    console.log('✅ Escáner detenido correctamente');
+                    activeCodeReader.clear();
+                } catch (err) {
+                    console.error('Error deteniendo el escáner:', err);
+                } finally {
                     activeCodeReader = null;
                 }
             }
@@ -1024,16 +962,21 @@
             document.addEventListener('click', handleEvents);
             document.addEventListener('submit', handleEvents);
             
-            window.addEventListener('popstate', () => {
-                stopScanner();
+            window.addEventListener('popstate', async () => {
+                await stopScanner();
                 appState = 'HOME';
                 render();
             });
             
-            document.addEventListener('visibilitychange', () => {
+            document.addEventListener('visibilitychange', async () => {
                 if (document.hidden) {
-                    stopScanner();
+                    await stopScanner();
                 }
+            });
+            
+            // Escuchar cuando la página se está cerrando
+            window.addEventListener('beforeunload', async () => {
+                await stopScanner();
             });
             
             console.log('✅ Aplicación inicializada');
