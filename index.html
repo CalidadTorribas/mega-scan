@@ -33,7 +33,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+	
+	<script>
+// Verificar que la librería se cargó correctamente
+window.addEventListener('load', function() {
+    console.log('Html5Qrcode disponible:', typeof Html5Qrcode !== 'undefined');
+    console.log('html5QRCode disponible:', typeof html5QRCode !== 'undefined');
+    if (typeof Html5Qrcode === 'undefined' && typeof html5QRCode === 'undefined') {
+        console.error('NINGUNA versión de html5-qrcode se cargó');
+    }
+});
+</script>
 
     <style>
         * {
@@ -494,7 +505,7 @@
         }
 
         // --- FUNCIONES DEL ESCÁNER ---
-		function initializeScanner() {
+				function initializeScanner() {
 			const video = document.getElementById('video');
 			const status = document.getElementById('scanner-status');
 			
@@ -502,34 +513,80 @@
 
 			status.textContent = 'Iniciando cámara...';
 
-			// Usar html5-qrcode en lugar de ZXing
+			// Verificar múltiples nombres posibles de la librería
+			let QrCodeLib = null;
 			if (typeof Html5Qrcode !== 'undefined') {
-				const html5QrCode = new Html5Qrcode("video");
-				activeCodeReader = html5QrCode;
+				QrCodeLib = Html5Qrcode;
+				console.log('Usando Html5Qrcode');
+			} else if (typeof html5QRCode !== 'undefined') {
+				QrCodeLib = html5QRCode;
+				console.log('Usando html5QRCode');
+			} else if (window.Html5Qrcode) {
+				QrCodeLib = window.Html5Qrcode;
+				console.log('Usando window.Html5Qrcode');
+			}
 
-				const config = {
-					fps: 10,
-					qrbox: { width: 250, height: 250 }
-				};
+			if (QrCodeLib) {
+				try {
+					const html5QrCode = new QrCodeLib("video");
+					activeCodeReader = html5QrCode;
 
-				status.textContent = 'Buscando código de barras...';
+					const config = {
+						fps: 10,
+						qrbox: { width: 250, height: 250 }
+					};
 
-				html5QrCode.start(
-					{ facingMode: "environment" },
-					config,
-					(decodedText, decodedResult) => {
-						stopScanner();
-						searchProduct(decodedText);
-					},
-					(errorMessage) => {
-						// Error silencioso durante escaneo
-					}
-				).catch(err => {
-					console.error('Error iniciando escáner:', err);
-					status.textContent = 'Error accediendo a la cámara';
-					showNotification('No se pudo acceder a la cámara', 'error');
-				});
+					status.textContent = 'Buscando código de barras...';
+
+					// Obtener cámaras disponibles primero
+					QrCodeLib.getCameras().then(devices => {
+						if (devices && devices.length) {
+							const cameraId = devices[devices.length - 1].id; // Cámara trasera
+							
+							html5QrCode.start(
+								cameraId,
+								config,
+								(decodedText, decodedResult) => {
+									stopScanner();
+									searchProduct(decodedText);
+								},
+								(errorMessage) => {
+									// Error silencioso durante escaneo
+								}
+							);
+						} else {
+							throw new Error('No se encontraron cámaras');
+						}
+					}).catch(err => {
+						console.error('Error con cámaras específicas, probando modo genérico:', err);
+						// Fallback al método anterior
+						html5QrCode.start(
+							{ facingMode: "environment" },
+							config,
+							(decodedText, decodedResult) => {
+								stopScanner();
+								searchProduct(decodedText);
+							},
+							(errorMessage) => {
+								// Error silencioso
+							}
+						).catch(err2 => {
+							console.error('Error iniciando escáner:', err2);
+							status.textContent = 'Error accediendo a la cámara';
+							showNotification('No se pudo acceder a la cámara', 'error');
+						});
+					});
+				} catch (error) {
+					console.error('Error creando escáner:', error);
+					status.textContent = 'Error inicializando escáner';
+				}
 			} else {
+				console.error('Ninguna librería de QR disponible');
+				console.log('Variables disponibles:', {
+					Html5Qrcode: typeof Html5Qrcode,
+					html5QRCode: typeof html5QRCode,
+					windowHtml5Qrcode: typeof window.Html5Qrcode
+				});
 				status.textContent = 'Error: Librería de escaneo no disponible';
 			}
 		}
@@ -541,11 +598,13 @@
 						activeCodeReader.clear();
 					}).catch(err => {
 						console.error('Error deteniendo el escáner:', err);
+					}).finally(() => {
+						activeCodeReader = null;
 					});
 				} catch (error) {
 					console.error('Error deteniendo el escáner:', error);
+					activeCodeReader = null;
 				}
-				activeCodeReader = null;
 			}
 		}
 
