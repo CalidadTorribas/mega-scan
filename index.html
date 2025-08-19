@@ -33,7 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/@zxing/browser@latest/umd/index.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 
     <style>
         * {
@@ -494,64 +494,60 @@
         }
 
         // --- FUNCIONES DEL ESCÁNER ---
-        function initializeScanner() {
-            const video = document.getElementById('video');
-            const status = document.getElementById('scanner-status');
-            
-            if (!video || !status) return;
+		function initializeScanner() {
+			const video = document.getElementById('video');
+			const status = document.getElementById('scanner-status');
+			
+			if (!video || !status) return;
 
-            status.textContent = 'Iniciando cámara...';
+			status.textContent = 'Iniciando cámara...';
 
-            navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                } 
-            })
-            .then(stream => {
-                currentStream = stream;
-                video.srcObject = stream;
-                video.play();
-                
-                status.textContent = 'Buscando código de barras...';
-                
-                if (typeof ZXing !== 'undefined') {
-                    const codeReader = new ZXing.BrowserBarcodeReader();
-                    activeCodeReader = codeReader;
-                    
-                    codeReader.decodeFromVideoDevice(null, video, (result, error) => {
-                        if (result) {
-                            stopScanner();
-                            searchProduct(result.text);
-                        }
-                    });
-                } else {
-                    status.textContent = 'Error: Librería de escaneo no disponible';
-                }
-            })
-            .catch(error => {
-                console.error('Error accediendo a la cámara:', error);
-                status.textContent = 'Error accediendo a la cámara';
-                showNotification('No se pudo acceder a la cámara', 'error');
-            });
-        }
+			// Usar html5-qrcode en lugar de ZXing
+			if (typeof Html5Qrcode !== 'undefined') {
+				const html5QrCode = new Html5Qrcode("video");
+				activeCodeReader = html5QrCode;
 
-        function stopScanner() {
-            if (activeCodeReader) {
-                try {
-                    activeCodeReader.reset();
-                } catch (error) {
-                    console.error('Error deteniendo el escáner:', error);
-                }
-                activeCodeReader = null;
-            }
-            
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
-            }
-        }
+				const config = {
+					fps: 10,
+					qrbox: { width: 250, height: 250 }
+				};
+
+				status.textContent = 'Buscando código de barras...';
+
+				html5QrCode.start(
+					{ facingMode: "environment" },
+					config,
+					(decodedText, decodedResult) => {
+						stopScanner();
+						searchProduct(decodedText);
+					},
+					(errorMessage) => {
+						// Error silencioso durante escaneo
+					}
+				).catch(err => {
+					console.error('Error iniciando escáner:', err);
+					status.textContent = 'Error accediendo a la cámara';
+					showNotification('No se pudo acceder a la cámara', 'error');
+				});
+			} else {
+				status.textContent = 'Error: Librería de escaneo no disponible';
+			}
+		}
+
+		function stopScanner() {
+			if (activeCodeReader) {
+				try {
+					activeCodeReader.stop().then(() => {
+						activeCodeReader.clear();
+					}).catch(err => {
+						console.error('Error deteniendo el escáner:', err);
+					});
+				} catch (error) {
+					console.error('Error deteniendo el escáner:', error);
+				}
+				activeCodeReader = null;
+			}
+		}
 
         // --- FUNCIONES DE BÚSQUEDA ---
         async function searchProduct(barcode) {
