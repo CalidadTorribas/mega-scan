@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mega||Scan - Escáner de Códigos de Barras</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1E40AF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Mega||Scan">
+    <link rel="manifest" href="manifest.json">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = { 
+                darkMode: 'media',
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            'inter': ['Inter', 'system-ui', 'sans-serif']
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/umd/zxing-browser.min.js"></script>
+
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        
+        .scanner-overlay {
+            background: linear-gradient(45deg, transparent 30%, rgba(59, 130, 246, 0.1) 50%, transparent 70%);
+            animation: scan 2s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-up {
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(100%); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .focus-ring:focus {
+            outline: 2px solid #3B82F6;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-500 font-inter">
+
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="fixed inset-0 bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center z-50 transition-opacity duration-500">
+        <div class="text-center text-white">
+            <div class="mb-6">
+                <svg class="w-24 h-24 mx-auto mb-4 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold mb-2">Mega||Scan</h1>
+            <p class="text-blue-100 text-lg">Cargando...</p>
+        </div>
+    </div>
+
+    <main id="app-root" class="w-full max-w-lg mx-auto bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm min-h-screen md:min-h-[95vh] md:my-4 md:shadow-2xl md:rounded-3xl flex flex-col overflow-hidden border border-white/30 dark:border-slate-700/50">
+        <!-- El contenido se inyectará aquí -->
+    </main>
+
+    <script>
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(error => console.log('SW registration failed'));
+            });
+        }
+
+        // --- CONFIGURACIÓN ---
+        const SUPABASE_URL = 'https://srsedippxqjpetcfcaae.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyc2VkaXBweHFqcGV0Y2ZjYWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MjM0OTUsImV4cCI6MjA3MTA5OTQ5NX0.IoLvEbciO1u3UqEZcZhmgaSNYixlI8Thp75K_7CBGhw';
+       
+        let supabaseClient = null;
+        
+        // Inicializar Supabase
+        if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof supabase !== 'undefined') {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } catch (error) {
+                console.error('Error inicializando Supabase:', error);
+            }
+        }
+
+        // --- ICONOS ---
+        const icons = {
+            camera: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9zM15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+            home: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>`,
+            search: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>`,
+            package: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>`,
+            arrowLeft: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>`,
+            loader: `<svg class="w-8 h-8 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`,
+            xCircle: `<svg class="w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+        };
+        
+        // --- ESTADO DE LA APLICACIÓN ---
+        let appState = 'HOME';
+        let scannedProduct = null;
+        let productMaterials = null;
+        let activeCodeReader = null;
+        let currentStream = null;
+
+        const appRoot = document.getElementById('app-root');
+
+        // --- VISTAS ---
+        const renderHomeView = () => `
+            <div class="flex flex-col items-center justify-center text-center p-8 h-full flex-1 relative fade-in">
+                <div class="absolute top-10 left-10 w-20 h-20 bg-blue-200/20 dark:bg-blue-800/20 rounded-full blur-xl"></div>
+                <div class="absolute bottom-20 right-10 w-32 h-32 bg-purple-200/20 dark:bg-purple-800/20 rounded-full blur-xl"></div>
+                
+                <div class="mb-8 relative z-10">
+                    <div class="w-28 h-28 bg-white rounded-3xl flex items-center justify-center shadow-lg mb-6 p-2">
+                        <!-- Logo Mega||Scan -->
+                        <div class="w-full h-full flex items-center justify-center text-2xl font-bold">
+                            <span class="text-blue-600">M</span>
+                            <span class="text-blue-500 mx-1">||</span>
+                            <span class="text-blue-400">S</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h1 class="text-5xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-8">Mega||Scan</h1>
+                <p class="text-lg text-slate-600 dark:text-slate-400 mb-12 max-w-xs leading-relaxed">La forma más rápida de obtener información de cualquier producto</p>
+                
+                <div class="w-full max-w-xs space-y-4">
+                    <button data-action="navigate-scanner" class="focus-ring w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl text-lg gap-3">
+                        ${icons.camera} Iniciar Escáner
+                    </button>
+                </div>
+                
+                <div class="mt-16 text-center">
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.0.0</p>
+                </div>
+            </div>`;
+
+        const renderScannerView = () => `
+            <div class="flex flex-col h-full flex-1 slide-up">
+                <header class="p-4 flex justify-between items-center text-slate-800 dark:text-white backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-b border-slate-200/50 dark:border-slate-700/50">
+                    <button data-action="go-home" class="focus-ring p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200 active:scale-95">
+                        ${icons.home}
+                    </button>
+                    <h1 class="text-xl font-semibold">Escanear Producto</h1>
+                    <div class="w-12"></div>
+                </header>
+                
+                <div class="relative flex-1 bg-black flex items-center justify-center mx-4 mt-4 rounded-2xl overflow-hidden shadow-2xl">
+                    <video id="video" class="w-full h-full object-cover" playsinline></video>
+                    
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="w-3/4 max-w-xs aspect-square relative">
+                            <div class="absolute inset-0 border-2 border-white/30 rounded-2xl"></div>
+                            <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-2xl"></div>
+                            <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-2xl"></div>
+                            <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-2xl"></div>
+                            <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-2xl"></div>
+                            <div class="scanner-overlay absolute inset-0 rounded-2xl"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="scanner-status" class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent text-white text-center text-sm font-medium">
+                        Buscando cámara...
+                    </div>
+                </div>
+                
+                <div class="p-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-t border-slate-200/50 dark:border-slate-700/50">
+                    <div class="relative flex py-3 items-center mb-4">
+                        <div class="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
+                        <span class="flex-shrink mx-4 text-slate-500 dark:text-slate-400 text-sm font-medium">O introduce manualmente</span>
+                        <div class="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
+                    </div>
+                    
+                    <form data-action="manual-submit" class="flex gap-3">
+                        <input 
+                            type="text" 
+                            id="barcode-input" 
+                            placeholder="Introduce el código aquí" 
+                            class="focus-ring flex-1 p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl bg-white/90 dark:bg-slate-700/90 text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-200" 
+                            required
+                            autocomplete="off"
+                        >
+                        <button 
+                            type="submit" 
+                            class="focus-ring bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 active:scale-95 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-2"
+                        >
+                            ${icons.search}
+                        </button>
+                    </form>
+                </div>
+            </div>`;
+
+        const renderLoadingView = (message) => `
+            <div class="flex flex-col items-center justify-center h-full text-center p-8 flex-1 relative fade-in">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-slate-800/50 dark:to-slate-900/50"></div>
+                <div class="relative z-10">
+                    <div class="mb-6">
+                        ${icons.loader.replace('w-8 h-8', 'w-16 h-16 text-blue-600')}
+                    </div>
+                    <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">${message}</h3>
+                    <div class="w-48 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div class="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 rounded-full animate-pulse"></div>
+                    </div>
+                </div>
+            </div>`;
+
+        const renderErrorView = (message) => `
+            <div class="flex flex-col items-center justify-center h-full text-center p-8 flex-1 fade-in">
+                <div class="mb-6">
+                    ${icons.xCircle}
+                </div>
+                <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Error</h3>
+                <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-xs">${message}</p>
+                <button data-action="go-home" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
+                    Volver al Inicio
+                </button>
+            </div>`;
+
+        const renderProductView = (product) => `
+            <div class="flex flex-col h-full flex-1 slide-up">
+                <header class="p-6 text-center relative bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 border-b border-slate-200/50 dark:border-slate-700/50">
+                    <button data-action="go-home" class="focus-ring absolute left-6 top-1/2 -translate-y-1/2 p-3 rounded-xl hover:bg-white/70 dark:hover:bg-slate-600/70 transition-all duration-200 active:scale-95">
+                        ${icons.home}
+                    </button>
+                    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Producto Encontrado</h1>
+                </header>
+                
+                <div class="flex-1 px-6 pb-6 overflow-auto">
+                    <div class="w-full h-56 md:h-64 mb-6 mt-6 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center shadow-inner overflow-hidden border border-slate-200 dark:border-slate-600">
+                        <img src="${product.image_url || generatePlaceholderImage()}" alt="${product.Name || 'Producto'}" class="object-contain h-full w-full p-6" onerror="this.src='${generatePlaceholderImage()}'">
+                    </div>
+                    
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-4">
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">${product.Name || 'Producto sin nombre'}</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Código: ${product.Barcode || 'N/A'}</p>
+                        
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-slate-500 dark:text-slate-400">ID:</span>
+                                <p class="font-semibold text-slate-900 dark:text-white">${product.id || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 dark:text-slate-400">Estado:</span>
+                                <p class="font-semibold text-slate-900 dark:text-white">${product.Status || 'Activo'}</p>
+                            </div>
+                        </div>
+                        
+                        ${product.Description ? `
+                            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <span class="text-slate-500 dark:text-slate-400 text-sm">Descripción:</span>
+                                <p class="text-slate-700 dark:text-slate-300 mt-1">${product.Description}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <footer class="p-6 border-t border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm">
+                    <div class="flex gap-3">
+                        <button data-action="view-materials" class="focus-ring flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                            ${icons.package} Ver Materiales
+                        </button>
+                        <button data-action="go-home" class="focus-ring flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-3 px-4 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-600 active:scale-95 transition-all duration-200">
+                            Nuevo Escaneo
+                        </button>
+                    </div>
+                </footer>
+            </div>`;
+
+        const renderMaterialsView = (product, materials) => `
+            <div class="flex flex-col h-full flex-1 slide-up">
+                <header class="p-4 flex items-center text-slate-800 dark:text-white backdrop-blur-sm bg-white/90 dark:bg-slate-800/90 border-b border-slate-200/50 dark:border-slate-700/50">
+                    <button data-action="back-to-product" class="focus-ring p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200 active:scale-95 mr-3">
+                        ${icons.arrowLeft}
+                    </button>
+                    <div class="flex-1">
+                        <h1 class="text-xl font-semibold">Materiales</h1>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 truncate">${product.Name}</p>
+                    </div>
+                </header>
+                
+                <div class="flex-1 overflow-auto p-4">
+                    ${materials && materials.length > 0 ? `
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden mb-4">
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider border-b border-slate-200 dark:border-slate-600">ID Material</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider border-b border-slate-200 dark:border-slate-600">Descripción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200 dark:divide-slate-600">
+                                        ${materials.map((material, index) => `
+                                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors duration-150 ${index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-25 dark:bg-slate-800/50'}">
+                                                <td class="px-4 py-3 text-sm font-mono text-slate-900 dark:text-slate-200 font-semibold">
+                                                    ${material.id}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm">
+                                                    <div class="font-medium text-slate-900 dark:text-slate-200">${material.Description}</div>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                            <div class="flex items-center mb-2">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                <span class="text-sm font-semibold text-blue-800 dark:text-blue-300">Información</span>
+                            </div>
+                            <p class="text-sm text-blue-700 dark:text-blue-300">
+                                Se encontraron <strong>${materials.length}</strong> materiales para este producto.
+                            </p>
+                        </div>
+                    ` : `
+                        <div class="flex flex-col items-center justify-center h-64 text-center">
+                            <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                                ${icons.package.replace('w-6 h-6', 'w-8 h-8 text-slate-400')}
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Sin materiales</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+                                No se encontraron materiales asociados a este producto.
+                            </p>
+                        </div>
+                    `}
+                </div>
+                
+                <footer class="p-4 border-t border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm">
+                    <div class="flex gap-3">
+                        <button data-action="back-to-product" class="focus-ring flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-3 px-4 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-600 active:scale-95 transition-all duration-200">
+                            Volver al Producto
+                        </button>
+                        <button data-action="go-home" class="focus-ring flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg">
+                            Inicio
+                        </button>
+                    </div>
+                </footer>
+            </div>`;
+
+        // --- FUNCIONES AUXILIARES ---
+        function generatePlaceholderImage() {
+            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M1Y5OEg4N1Y3NFoiIGZpbGw9IiM5Q0E0QUYiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZGlzcGxheTpibG9jazsgbWFyZ2luOmF1dG87Ij4KPHBhdGggZD0iTTMgNXYxNCIgc3Ryb2tlPSIjNjM2NTc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOCA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNyA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0yMSA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo8L3N2Zz4K';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-500 text-white' : 
+                           type === 'success' ? 'bg-green-500 text-white' : 
+                           'bg-blue-500 text-white';
+            
+            notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-xl shadow-lg transition-all duration-300 ${bgColor}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translate(-50%, -100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // --- GESTIÓN DE ESTADO Y NAVEGACIÓN ---
+        function render() {
+            try {
+                switch (appState) {
+                    case 'HOME':
+                        appRoot.innerHTML = renderHomeView();
+                        break;
+                    case 'SCANNER':
+                        appRoot.innerHTML = renderScannerView();
+                        setTimeout(initializeScanner, 100);
+                        break;
+                    case 'LOADING':
+                        appRoot.innerHTML = renderLoadingView('Buscando producto...');
+                        break;
+                    case 'PRODUCT':
+                        if (scannedProduct) {
+                            appRoot.innerHTML = renderProductView(scannedProduct);
+                        } else {
+                            appState = 'HOME';
+                            render();
+                        }
+                        break;
+                    case 'MATERIALS':
+                        if (scannedProduct && productMaterials !== null) {
+                            appRoot.innerHTML = renderMaterialsView(scannedProduct, productMaterials);
+                        } else {
+                            appState = 'PRODUCT';
+                            render();
+                        }
+                        break;
+                    case 'ERROR':
+                        appRoot.innerHTML = renderErrorView('No se pudo encontrar el producto');
+                        break;
+                    default:
+                        appState = 'HOME';
+                        render();
+                }
+            } catch (error) {
+                console.error('Error en render:', error);
+                appRoot.innerHTML = renderErrorView('Error inesperado en la aplicación');
+            }
+        }
+
+        // --- GESTIÓN DE EVENTOS ---
+        function handleEvents(event) {
+            const action = event.target.closest('[data-action]')?.getAttribute('data-action');
+            if (!action) return;
+
+            event.preventDefault();
+
+            try {
+                switch (action) {
+                    case 'navigate-scanner':
+                        appState = 'SCANNER';
+                        render();
+                        break;
+                    case 'go-home':
+                        stopScanner();
+                        appState = 'HOME';
+                        scannedProduct = null;
+                        productMaterials = null;
+                        render();
+                        break;
+                    case 'back-to-product':
+                        appState = 'PRODUCT';
+                        render();
+                        break;
+                    case 'view-materials':
+                        if (scannedProduct) {
+                            loadProductMaterials(scannedProduct.id);
+                        }
+                        break;
+                    case 'manual-submit':
+                        handleManualSubmit(event);
+                        break;
+                }
+            } catch (error) {
+                console.error('Error manejando evento:', error);
+                showNotification('Error procesando la acción', 'error');
+            }
+        }
+
+        function handleManualSubmit(event) {
+            event.preventDefault();
+            const input = document.getElementById('barcode-input');
+            const barcode = input?.value?.trim();
+            
+            if (!barcode) {
+                showNotification('Por favor introduce un código', 'error');
+                return;
+            }
+
+            stopScanner();
+            searchProduct(barcode);
+            input.value = '';
+        }
+
+        // --- FUNCIONES DEL ESCÁNER ---
+        function initializeScanner() {
+            const video = document.getElementById('video');
+            const status = document.getElementById('scanner-status');
+            
+            if (!video || !status) return;
+
+            status.textContent = 'Iniciando cámara...';
+
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            })
+            .then(stream => {
+                currentStream = stream;
+                video.srcObject = stream;
+                video.play();
+                
+                status.textContent = 'Buscando código de barras...';
+                
+                if (typeof ZXing !== 'undefined') {
+                    const codeReader = new ZXing.BrowserBarcodeReader();
+                    activeCodeReader = codeReader;
+                    
+                    codeReader.decodeFromVideoDevice(null, video, (result, error) => {
+                        if (result) {
+                            stopScanner();
+                            searchProduct(result.text);
+                        }
+                    });
+                } else {
+                    status.textContent = 'Error: Librería de escaneo no disponible';
+                }
+            })
+            .catch(error => {
+                console.error('Error accediendo a la cámara:', error);
+                status.textContent = 'Error accediendo a la cámara';
+                showNotification('No se pudo acceder a la cámara', 'error');
+            });
+        }
+
+        function stopScanner() {
+            if (activeCodeReader) {
+                try {
+                    activeCodeReader.reset();
+                } catch (error) {
+                    console.error('Error deteniendo el escáner:', error);
+                }
+                activeCodeReader = null;
+            }
+            
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+        }
+
+        // --- FUNCIONES DE BÚSQUEDA ---
+        async function searchProduct(barcode) {
+            appState = 'LOADING';
+            render();
+
+            try {
+                if (!supabaseClient) {
+                    throw new Error('Base de datos no configurada');
+                }
+
+                const cleanBarcode = String(barcode).trim();
+
+                const { data, error } = await supabaseClient
+                    .from('products')
+                    .select('*')
+                    .eq('Barcode', cleanBarcode)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    throw error;
+                }
+
+                if (data) {
+                    scannedProduct = {
+                        ...data,
+                        Code: data.Barcode,
+                        Name: data.Name,
+                        Description: data.Description,
+                        image_url: data.image_url,
+                        Status: data.Status || 'Activo'
+                    };
+                    appState = 'PRODUCT';
+                    showNotification('Producto encontrado', 'success');
+                } else {
+                    appState = 'ERROR';
+                    showNotification('Producto no encontrado', 'error');
+                }
+                
+                render();
+            } catch (error) {
+                console.error('Error buscando producto:', error);
+                appState = 'ERROR';
+                render();
+                showNotification('Error en la búsqueda', 'error');
+            }
+        }
+
+        async function loadProductMaterials(productId) {
+            try {
+                appState = 'LOADING';
+                render();
+
+                if (!supabaseClient) {
+                    throw new Error('Base de datos no configurada');
+                }
+
+                const { data, error } = await supabaseClient
+                    .from('product_materials')
+                    .select(`
+                        material_id,
+                        materials (
+                            id,
+                            description
+                        )
+                    `)
+                    .eq('product_id', productId);
+
+                if (error) {
+                    throw error;
+                }
+
+                productMaterials = data ? data.map(item => ({
+                    id: item.materials.id,
+                    Description: item.materials.description
+                })) : [];
+
+                appState = 'MATERIALS';
+                render();
+                
+                const count = productMaterials.length;
+                showNotification(`${count} material${count !== 1 ? 'es' : ''} encontrado${count !== 1 ? 's' : ''}`, 'success');
+            } catch (error) {
+                console.error('Error cargando materiales:', error);
+                productMaterials = [];
+                appState = 'MATERIALS';
+                render();
+                showNotification('Error cargando materiales', 'error');
+            }
+        }
+
+        // --- INICIALIZACIÓN ---
+        function hideSplashScreen() {
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 500);
+            }
+        }
+
+        function initApp() {
+            setTimeout(hideSplashScreen, 1500);
+            render();
+            
+            document.addEventListener('click', handleEvents);
+            document.addEventListener('submit', handleEvents);
+            
+            window.addEventListener('popstate', () => {
+                stopScanner();
+                appState = 'HOME';
+                render();
+            });
+            
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    stopScanner();
+                }
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
