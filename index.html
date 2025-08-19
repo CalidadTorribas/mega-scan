@@ -34,7 +34,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Cargar html5-qrcode de forma más robusta -->
+    <!-- Cargar html5-qrcode desde JSDELIVR para evitar CORS -->
     <script>
         console.log('🔄 Iniciando carga de html5-qrcode...');
         
@@ -46,42 +46,71 @@
                 return;
             }
 
-            // Crear script element
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js';
-            script.async = true;
+            // Lista de CDNs alternativos para intentar
+            const cdnUrls = [
+                'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
+                'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
+            ];
             
-            script.onload = function() {
-                console.log('✅ Script html5-qrcode cargado exitosamente');
-                
-                // Verificar disponibilidad con timeout
-                let attempts = 0;
-                const maxAttempts = 20;
-                
-                function checkAvailability() {
-                    attempts++;
-                    if (typeof Html5Qrcode !== 'undefined') {
-                        console.log('✅ Html5Qrcode disponible después de', attempts, 'intentos');
-                        window.qrCodeLibrary = Html5Qrcode;
-                        resolve(Html5Qrcode);
-                    } else if (attempts < maxAttempts) {
-                        setTimeout(checkAvailability, 100);
-                    } else {
-                        console.error('❌ Html5Qrcode no disponible después de', maxAttempts, 'intentos');
-                        reject(new Error('Html5Qrcode no disponible después de cargar'));
-                    }
+            let currentIndex = 0;
+            
+            function tryLoadFromCDN(index) {
+                if (index >= cdnUrls.length) {
+                    reject(new Error('No se pudo cargar html5-qrcode desde ningún CDN'));
+                    return;
                 }
                 
-                checkAvailability();
-            };
+                const script = document.createElement('script');
+                script.src = cdnUrls[index];
+                script.async = true;
+                script.crossOrigin = 'anonymous'; // Agregar crossOrigin
+                
+                console.log(`⏳ Intentando cargar desde: ${cdnUrls[index]}`);
+                
+                script.onload = function() {
+                    console.log(`✅ Script cargado desde: ${cdnUrls[index]}`);
+                    
+                    // Verificar disponibilidad con timeout
+                    let attempts = 0;
+                    const maxAttempts = 30;
+                    
+                    function checkAvailability() {
+                        attempts++;
+                        if (typeof Html5Qrcode !== 'undefined') {
+                            console.log('✅ Html5Qrcode disponible después de', attempts, 'intentos');
+                            window.qrCodeLibrary = Html5Qrcode;
+                            resolve(Html5Qrcode);
+                        } else if (attempts < maxAttempts) {
+                            setTimeout(checkAvailability, 100);
+                        } else {
+                            console.warn(`⚠️ Html5Qrcode no disponible desde ${cdnUrls[index]}, probando siguiente...`);
+                            document.head.removeChild(script);
+                            tryLoadFromCDN(index + 1);
+                        }
+                    }
+                    
+                    checkAvailability();
+                };
+                
+                script.onerror = function(error) {
+                    console.warn(`⚠️ Error cargando desde ${cdnUrls[index]}:`, error);
+                    document.head.removeChild(script);
+                    tryLoadFromCDN(index + 1);
+                };
+                
+                document.head.appendChild(script);
+            }
             
-            script.onerror = function(error) {
-                console.error('❌ Error cargando script html5-qrcode:', error);
-                reject(new Error('Error cargando html5-qrcode'));
-            };
-            
-            document.head.appendChild(script);
-            console.log('⏳ Script html5-qrcode agregado al DOM');
+            tryLoadFromCDN(0);
+        });
+        
+        // También intentar cargar directamente sin Promise para casos edge
+        window.addEventListener('load', function() {
+            if (!window.qrCodeLibrary && typeof Html5Qrcode !== 'undefined') {
+                window.qrCodeLibrary = Html5Qrcode;
+                console.log('✅ Html5Qrcode disponible directamente después del load');
+            }
         });
     </script>
 
@@ -266,6 +295,7 @@
 
         async function ensureQrLibraryLoaded() {
             if (window.qrCodeLibrary) {
+                console.log('✅ Librería ya disponible desde caché');
                 return window.qrCodeLibrary;
             }
             
@@ -273,10 +303,19 @@
                 console.log('⏳ Esperando carga de html5-qrcode...');
                 const library = await window.qrLibraryLoadPromise;
                 window.qrCodeLibrary = library;
+                console.log('✅ Librería cargada y disponible');
                 return library;
             } catch (error) {
                 console.error('❌ Error cargando librería:', error);
-                throw new Error('No se pudo cargar la librería del escáner. Verifica tu conexión a internet.');
+                
+                // Último intento: verificar si está disponible globalmente
+                if (typeof Html5Qrcode !== 'undefined') {
+                    console.log('✅ Librería encontrada globalmente como fallback');
+                    window.qrCodeLibrary = Html5Qrcode;
+                    return Html5Qrcode;
+                }
+                
+                throw new Error('La librería del escáner no se pudo cargar. Esto puede ser debido a bloqueo de contenido, adblocker o problemas de red.');
             }
         }
 
@@ -295,13 +334,11 @@
                 return 'Las restricciones de cámara no pueden ser satisfechas.';
             } else if (error.message && error.message.includes('HTTPS')) {
                 return 'HTTPS requerido para acceso a la cámara en móviles.';
-            } else if (error.message && error.message.includes('html5-qrcode')) {
-                return 'Error cargando el escáner. Verifica tu conexión a internet y recarga la página.';
-            } else if (error.message && error.message.includes('librería')) {
-                return 'Error cargando el escáner. Verifica tu conexión a internet y recarga la página.';
+            } else if (error.message && (error.message.includes('librería') || error.message.includes('escáner') || error.message.includes('CDN'))) {
+                return 'No se pudo cargar el escáner. Puede ser debido a un adblocker o restricciones de red. Desactiva tu adblocker y recarga la página.';
             }
             
-            return 'Error accediendo a la cámara: ' + (error.message || 'Error desconocido');
+            return 'Error inesperado: ' + (error.message || 'Error desconocido');
         }
 
         // --- VISTAS ---
@@ -331,7 +368,7 @@
                 </div>
                 
                 <div class="mt-16 text-center">
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.3.0</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.3.1</p>
                 </div>
             </div>`;
 
@@ -447,7 +484,7 @@
                     <button data-action="go-home" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
                         Volver al Inicio
                     </button>
-                    ${message.includes('conexión') || message.includes('librería') ? `
+                    ${message.includes('adblocker') || message.includes('librería') || message.includes('escáner') || message.includes('conexión') ? `
                         <button onclick="location.reload()" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
                             Recargar Página
                         </button>
@@ -580,7 +617,7 @@
 
         // --- FUNCIONES AUXILIARES ---
         function generatePlaceholderImage() {
-            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M1Y5OEg4N1Y3NFoiIGZpbGw9IiM5Q0E0QUYiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZGlzcGxheTpibG9jazsgbWFyZ2luOmF1dG87Ij4KPHBhdGggZD0iTTMgNXYxNCIgc3Ryb2tlPSIjNjM2NTc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOCA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNyA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0yMSA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo8L3N2Zz4K';
+            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M1Y5OEg4N1Y3NFoiIGZpbGw9IiM5Q0E0QUYiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZGlzcGxheTpibG9jazsgbWFyZ2luOmF1dG87Ij4KPHBhdGggZD0iTTMgNXYxNCIgc3Ryb2tlPSIjNjM2NTc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOCA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNyA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi/+CjxwYXRoIGQ9Ik0yMSA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo8L3N2Zz4K';
         }
 
         function showNotification(message, type = 'info') {
@@ -690,7 +727,6 @@
 
         async function activateCamera() {
             const status = document.getElementById('scanner-status');
-            const qrReader = document.getElementById('qr-reader');
             
             try {
                 if (status) status.textContent = 'Verificando compatibilidad...';
@@ -849,7 +885,6 @@
 
         function onScanFailure(error) {
             // Error silencioso durante escaneo - normal que ocurra
-            // No logguear para evitar spam en consola
         }
 
         function stopScanner() {
