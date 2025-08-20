@@ -34,7 +34,19 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Módulos de la aplicación -->
+    <!-- Módulos de la aplicación híbrida (v2.0) -->
+    <!-- Interfaces y detección de capacidades -->
+    <script src="scanner-interfaces.js"></script>
+    
+    <!-- Motores de escaneo -->
+    <script src="barcode-detector-engine.js"></script>
+    <script src="zxing-wasm-engine.js"></script>
+    <script src="html5-qrcode-engine.js"></script>
+    
+    <!-- Factory orquestadora -->
+    <script src="scanner-factory.js"></script>
+    
+    <!-- Módulo principal actualizado -->
     <script src="scanner-module.js"></script>
     <script src="view-manager.js"></script>
 
@@ -117,9 +129,9 @@
 
         // --- CONFIGURACIÓN ---
         const APP_CONFIG = {
-            VERSION: '1.8.0', // ACTUALIZADO: Nueva versión con mejoras
+            VERSION: '2.0.0', // ACTUALIZADO: Nueva versión con arquitectura híbrida
             NAME: 'Mega||Scan',
-            DESCRIPTION: 'La forma más rápida de obtener información de cualquier producto'
+            DESCRIPTION: 'La forma más rápida de obtener información de cualquier producto - Ahora con motores de alto rendimiento'
         };
 
         const SUPABASE_URL = 'https://srsedippxqjpetcfcaae.supabase.co';
@@ -153,7 +165,7 @@
             const isCritical = criticalMessages.some(keyword => message.toLowerCase().includes(keyword));
             
             if (!isCritical && type !== 'error') {
-                console.log('📣 Notificación omitida (no crítica):', message);
+                console.log('📢 Notificación omitida (no crítica):', message);
                 return; // No mostrar notificaciones no críticas
             }
             
@@ -448,13 +460,14 @@
             // Crear instancia del escáner
             scanner = new ScannerModule();
             
-            // Configurar callbacks MEJORADOS
+            // Configurar callbacks MEJORADOS con arquitectura híbrida
             scanner.setCallbacks({
                 onScanSuccess: (decodedText, decodedResult) => {
+                    console.log('🎯 Escaneo exitoso con:', decodedResult.engine || 'motor desconocido');
                     searchProduct(decodedText);
                 },
                 onScanError: (error, message) => {
-                    // MEJORADO: Solo notificar errores críticos
+                    // Solo notificar errores críticos
                     if (message.includes('adblocker') || message.includes('conexión') || message.includes('permisos')) {
                         showNotification(message, 'error');
                     }
@@ -501,7 +514,75 @@
                 }
             });
             
-            console.log('✅ Aplicación inicializada');
+            console.log('✅ Aplicación inicializada con arquitectura híbrida v2.0');
+            
+            // Debug visual mejorado para desarrollo
+            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                console.log('🛠️ MODO DEBUG ACTIVADO - Información detallada disponible');
+                
+                // Mostrar información del motor disponible
+                setTimeout(async () => {
+                    try {
+                        const engineInfo = scanner.getEngineInfo();
+                        if (engineInfo) {
+                            console.log('🔧 Motor de escaneo disponible:', engineInfo.name);
+                            console.log('⚡ Rendimiento estimado:', engineInfo.performance);
+                            console.log('📋 Capacidades:', engineInfo.capabilities);
+                            
+                            // Mostrar estadísticas de la factory
+                            const factoryStats = scanner.scannerFactory?.getStats();
+                            if (factoryStats) {
+                                console.log('📊 Factory Stats:', factoryStats);
+                            }
+                            
+                            // Añadir indicador visual en la UI
+                            const debugIndicator = document.createElement('div');
+                            debugIndicator.innerHTML = `
+                                <div style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 8px; font-family: monospace; font-size: 12px; z-index: 9999; max-width: 200px;">
+                                    <div style="color: #4ade80;">🔧 ${engineInfo.name}</div>
+                                    <div style="color: #60a5fa;">⚡ ${engineInfo.performance}</div>
+                                    <div style="color: #fbbf24;">📱 ${navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Escritorio'}</div>
+                                </div>
+                            `;
+                            document.body.appendChild(debugIndicator);
+                            
+                            // Auto-ocultar después de 5 segundos
+                            setTimeout(() => {
+                                debugIndicator.style.opacity = '0.3';
+                            }, 5000);
+                        }
+                    } catch (e) {
+                        console.log('ℹ️ Información del motor disponible después de la primera inicialización');
+                    }
+                }, 2000);
+                
+                // Función de debug global
+                window.debugMegaScan = () => {
+                    console.log('=== 🛠️ MEGA SCAN DEBUG INFO ===');
+                    console.log('Motor actual:', scanner.getEngineInfo());
+                    console.log('Estado:', scanner.getStatus());
+                    console.log('Estadísticas:', scanner.getDetailedStats());
+                    if (scanner.scannerFactory?.capabilityDetector) {
+                        console.log('Capacidades:', scanner.scannerFactory.capabilityDetector.getCapabilities());
+                    }
+                    console.log('=== FIN DEBUG INFO ===');
+                };
+                
+                console.log('💡 Tip: Ejecuta debugMegaScan() en consola para información completa');
+            } else {
+                // Log información básica en producción
+                setTimeout(async () => {
+                    try {
+                        const engineInfo = scanner.getEngineInfo();
+                        if (engineInfo) {
+                            console.log('🔧 Motor de escaneo disponible:', engineInfo.name);
+                            console.log('⚡ Rendimiento estimado:', engineInfo.performance);
+                        }
+                    } catch (e) {
+                        console.log('ℹ️ Información del motor disponible después de la primera inicialización');
+                    }
+                }, 1000);
+            }
         }
 
         if (document.readyState === 'loading') {
