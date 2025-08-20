@@ -1,6 +1,6 @@
 /**
  * Módulo Scanner - Gestión completa del escáner de códigos de barras
- * Versión: 1.0.0
+ * Versión: 1.1.0 - Mejoras en UX y gestión de permisos
  */
 
 class ScannerModule {
@@ -9,6 +9,7 @@ class ScannerModule {
         this.qrCodeLibrary = null;
         this.cameraPermissionStatus = 'unknown'; // 'unknown', 'granted', 'denied', 'prompt'
         this.isInitialized = false;
+        this.hasRequestedPermissionBefore = false; // Nuevo: tracking de permisos solicitados
         
         // Callbacks externos que se pueden configurar
         this.callbacks = {
@@ -18,11 +19,11 @@ class ScannerModule {
             onStatusUpdate: null
         };
 
-        // Configuración del escáner
+        // Configuración del escáner - MEJORADA
         this.config = {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
+            qrbox: { width: 320, height: 200 }, // CAMBIO: formato rectangular más ancho
+            aspectRatio: 1.6, // CAMBIO: ajustado al nuevo ratio
             cdnUrls: [
                 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
                 'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
@@ -32,6 +33,40 @@ class ScannerModule {
 
         // Auto-inicializar la carga de la librería
         this.initLibraryLoader();
+        
+        // NUEVO: Verificar permisos persistentes al inicializar
+        this.checkPersistedPermissions();
+    }
+
+    /**
+     * NUEVO: Verificar permisos persistentes del navegador
+     */
+    async checkPersistedPermissions() {
+        try {
+            if (navigator.permissions) {
+                const permission = await navigator.permissions.query({ name: 'camera' });
+                this.cameraPermissionStatus = permission.state;
+                
+                // Si ya se concedieron antes, marcar como solicitados
+                if (permission.state === 'granted') {
+                    this.hasRequestedPermissionBefore = true;
+                }
+                
+                console.log('🔍 Permisos persistentes verificados:', permission.state);
+                
+                // Escuchar cambios en permisos
+                permission.onchange = () => {
+                    this.cameraPermissionStatus = permission.state;
+                    console.log('🔄 Permisos de cámara cambiaron a:', permission.state);
+                    
+                    if (this.callbacks.onPermissionChange) {
+                        this.callbacks.onPermissionChange(permission.state);
+                    }
+                };
+            }
+        } catch (error) {
+            console.log('⚠️ Error verificando permisos persistentes:', error);
+        }
     }
 
     /**
@@ -42,7 +77,7 @@ class ScannerModule {
     }
 
     /**
-     * Verificar compatibilidad del navegador
+     * Verificar compatibilidad del navegador - MEJORADA
      */
     checkCompatibility() {
         const isSecureContext = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost';
@@ -53,6 +88,11 @@ class ScannerModule {
         }
         
         if (!hasMediaDevices) {
+            // MEJORADO: Detectar si estamos en escritorio sin cámara
+            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+            if (isDesktop) {
+                throw new Error('DESKTOP_NO_CAMERA');
+            }
             throw new Error('Tu navegador no soporta acceso a la cámara');
         }
         
@@ -63,7 +103,7 @@ class ScannerModule {
      * Inicializar el cargador de la librería HTML5-QRCode
      */
     initLibraryLoader() {
-        console.log('📄 Iniciando carga de html5-qrcode...');
+        console.log('🔄 Iniciando carga de html5-qrcode...');
         
         window.qrLibraryLoadPromise = new Promise((resolve, reject) => {
             // Verificar si ya está cargado
@@ -168,23 +208,70 @@ class ScannerModule {
     }
 
     /**
-     * Solicitar permisos de cámara
+     * Solicitar permisos de cámara - MEJORADO con mejor detección de desktop
      */
     async requestCameraPermission() {
         try {
-            console.log('📹 Solicitando permisos de cámara...');
-            const stream = await navigator.mediaDevices.getUserMedia({ 
+            console.log('🔹 Solicitando permisos de cámara...');
+            
+            // NUEVO: Verificar primero si hay cámaras disponibles en escritorio
+            if (!('ontouchstart' in window) && navigator.maxTouchPoints === 0) {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                    if (videoDevices.length === 0) {
+                        throw new Error('DESKTOP_NO_CAMERA');
+                    }
+                    console.log('✅ Cámaras detectadas en escritorio:', videoDevices.length);
+                } catch (enumError) {
+                    console.log('⚠️ No se pudieron enumerar dispositivos, continuando...');
+                }
+            }
+            
+            // MEJORADO: Configuración avanzada con enfoque automático
+            const constraints = { 
                 video: { 
                     facingMode: "environment",
                     width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    height: { ideal: 720 },
+                    // NUEVO: Configuración de enfoque automático
+                    focusMode: { ideal: "continuous" }
                 } 
-            });
+            };
+
+            // Intentar con configuración avanzada primero
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('✅ Permisos concedidos con enfoque automático');
+            } catch (advancedError) {
+                console.log('⚠️ Enfoque automático no disponible, usando configuración básica');
+                
+                // MEJORADO: Detectar específicamente NotFoundError en escritorio
+                if (advancedError.name === 'NotFoundError') {
+                    const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+                    if (isDesktop) {
+                        throw new Error('DESKTOP_NO_CAMERA');
+                    }
+                }
+                
+                // FALLBACK: Configuración básica sin enfoque automático
+                const basicConstraints = {
+                    video: { 
+                        facingMode: "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+                console.log('✅ Permisos concedidos con configuración básica');
+            }
             
             // Cerrar stream inmediatamente después de verificar permisos
             stream.getTracks().forEach(track => track.stop());
             this.cameraPermissionStatus = 'granted';
-            console.log('✅ Permisos de cámara otorgados');
+            this.hasRequestedPermissionBefore = true; // NUEVO: Marcar como solicitado
+            
             return true;
         } catch (error) {
             console.error('❌ Error de permisos de cámara:', error);
@@ -223,15 +310,17 @@ class ScannerModule {
     }
 
     /**
-     * Generar mensaje de error amigable
+     * Generar mensaje de error amigable - MEJORADO
      */
     getErrorMessage(error) {
         console.error('Detalle del error:', error);
         
-        if (error.name === 'NotAllowedError') {
+        if (error.message === 'DESKTOP_NO_CAMERA') {
+            return 'No se detectó ninguna cámara en este dispositivo. Puedes introducir el código manualmente más abajo.';
+        } else if (error.name === 'NotAllowedError') {
             return 'Permisos de cámara denegados. Permite el acceso en la configuración de tu navegador y recarga la página.';
         } else if (error.name === 'NotFoundError') {
-            return 'No se encontró ninguna cámara en el dispositivo.';
+            return 'No se encontró ninguna cámara en el dispositivo. Puedes introducir el código manualmente.';
         } else if (error.name === 'NotSupportedError') {
             return 'El navegador no soporta acceso a la cámara.';
         } else if (error.name === 'NotReadableError') {
@@ -248,10 +337,18 @@ class ScannerModule {
     }
 
     /**
-     * Activar la cámara y preparar el escáner
+     * Activar la cámara y preparar el escáner - MEJORADO
      */
     async activateCamera() {
         try {
+            // MEJORADO: Si ya tenemos permisos, saltar directamente a la librería
+            if (this.cameraPermissionStatus === 'granted' && this.hasRequestedPermissionBefore) {
+                console.log('✅ Permisos ya concedidos, saltando verificación');
+                this.updateStatus('Cargando escáner...');
+                await this.ensureQrLibraryLoaded();
+                return true;
+            }
+
             // Actualizar estado
             this.updateStatus('Verificando compatibilidad...');
             
@@ -286,7 +383,7 @@ class ScannerModule {
     }
 
     /**
-     * Inicializar el escáner
+     * Inicializar el escáner - MEJORADO con configuración avanzada
      */
     async initializeScanner(elementId = 'qr-reader') {
         if (this.cameraPermissionStatus !== 'granted') {
@@ -349,13 +446,31 @@ class ScannerModule {
             } catch (cameraError) {
                 console.log('Error con cámaras específicas, intentando con constrains genéricos...');
                 
-                // Fallback a constrains genéricos
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    config,
-                    this.onScanSuccess.bind(this),
-                    this.onScanFailure.bind(this)
-                );
+                // MEJORADO: Fallback con configuración avanzada
+                const advancedConstraints = { 
+                    facingMode: "environment",
+                    focusMode: "continuous" // NUEVO: Enfoque automático
+                };
+                
+                try {
+                    await html5QrCode.start(
+                        advancedConstraints,
+                        config,
+                        this.onScanSuccess.bind(this),
+                        this.onScanFailure.bind(this)
+                    );
+                    console.log('✅ Escáner iniciado con enfoque automático');
+                } catch (advancedError) {
+                    console.log('⚠️ Enfoque automático no disponible, usando configuración básica');
+                    // Fallback final sin enfoque automático
+                    await html5QrCode.start(
+                        { facingMode: "environment" },
+                        config,
+                        this.onScanSuccess.bind(this),
+                        this.onScanFailure.bind(this)
+                    );
+                    console.log('✅ Escáner iniciado con configuración básica');
+                }
                 
                 this.updateStatus('Buscando código de barras...');
                 this.isInitialized = true;
@@ -434,14 +549,15 @@ class ScannerModule {
     }
 
     /**
-     * Obtener estado actual del escáner
+     * Obtener estado actual del escáner - MEJORADO
      */
     getStatus() {
         return {
             isInitialized: this.isInitialized,
             cameraPermissionStatus: this.cameraPermissionStatus,
             hasActiveReader: !!this.activeCodeReader,
-            libraryLoaded: !!this.qrCodeLibrary
+            libraryLoaded: !!this.qrCodeLibrary,
+            hasRequestedPermissionBefore: this.hasRequestedPermissionBefore // NUEVO
         };
     }
 
