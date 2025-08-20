@@ -115,6 +115,12 @@
         }
 
         // --- CONFIGURACIÓN ---
+        const APP_CONFIG = {
+            VERSION: '1.6.1',
+            NAME: 'Mega||Scan',
+            DESCRIPTION: 'La forma más rápida de obtener información de cualquier producto'
+        };
+
         const SUPABASE_URL = 'https://srsedippxqjpetcfcaae.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyc2VkaXBweHFqcGV0Y2ZjYWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MjM0OTUsImV4cCI6MjA3MTA5OTQ5NX0.IoLvEbciO1u3UqEZcZhmgaSNYixlI8Thp75K_7CBGhw';
        
@@ -166,8 +172,8 @@
                     </div>
                 </div>
                 
-                <h1 class="text-5xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-8">Mega||Scan</h1>
-                <p class="text-lg text-slate-600 dark:text-slate-400 mb-12 max-w-xs leading-relaxed">La forma más rápida de obtener información de cualquier producto</p>
+                <h1 class="text-5xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-8">${APP_CONFIG.NAME}</h1>
+                <p class="text-lg text-slate-600 dark:text-slate-400 mb-12 max-w-xs leading-relaxed">${APP_CONFIG.DESCRIPTION}</p>
                 
                 <div class="w-full max-w-xs space-y-4">
                     <button data-action="navigate-scanner" class="focus-ring w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl text-lg gap-3">
@@ -176,7 +182,7 @@
                 </div>
                 
                 <div class="mt-16 text-center">
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión 1.5.1</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Versión ${APP_CONFIG.VERSION}</p>
                 </div>
             </div>`;
 
