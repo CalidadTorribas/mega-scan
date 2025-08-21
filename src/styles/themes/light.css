@@ -1,0 +1,19 @@
+/* ================================================================
+   ARCHIVO: src/styles/themes/light.css
+   ================================================================ */
+
+/**
+ * Tema Claro - Variables específicas
+ * Configuración específica para el tema claro
+ */
+
+[data-theme="light"] {
+  /* Refinamientos específicos del tema claro */
+  --color-scanner-overlay: rgba(0, 0, 0, 0.7);
+  --color-splash-bg: var(--gradient-primary);
+  
+  /* Sombras más suaves para tema claro */
+  --shadow-card: var(--shadow-lg);
+  --shadow-button: var(--shadow-sm);
+  --shadow-modal: var(--shadow-2xl);
+}

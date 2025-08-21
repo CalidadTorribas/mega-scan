@@ -10,128 +10,166 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Mega||Scan">
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="public/manifest.json">
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        if (typeof tailwind !== 'undefined') {
-            tailwind.config = { 
-                darkMode: 'media',
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            'inter': ['Inter', 'system-ui', 'sans-serif']
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <!-- Design System v3.0 - CSS en orden correcto -->
+    <link rel="stylesheet" href="src/styles/design-tokens/colors.css">
+    <link rel="stylesheet" href="src/styles/design-tokens/typography.css">
+    <link rel="stylesheet" href="src/styles/design-tokens/spacing.css">
+    <link rel="stylesheet" href="src/styles/design-tokens/effects.css">
+    <link rel="stylesheet" href="src/styles/base/reset.css">
+    <link rel="stylesheet" href="src/styles/base/globals.css">
+    <link rel="stylesheet" href="src/styles/base/components.css">
+    <link rel="stylesheet" href="src/styles/themes/light.css">
+    <link rel="stylesheet" href="src/styles/themes/dark.css">
+
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Módulos de la aplicación híbrida (v2.0) -->
-    <!-- Interfaces y detección de capacidades -->
-    <script src="scanner-interfaces.js"></script>
+    <!-- Core Scanner System v2.1 -->
+    <script src="src/core/scanner/scanner-interfaces.js"></script>
+    <script src="src/core/scanner/barcode-detector-engine.js"></script>
+    <script src="src/core/scanner/zxing-wasm-engine.js"></script>
+    <script src="src/core/scanner/html5-qrcode-engine.js"></script>
+    <script src="src/core/scanner/scanner-factory.js"></script>
+    <script src="src/core/scanner/scanner-module.js"></script>
     
-    <!-- Motores de escaneo -->
-    <script src="barcode-detector-engine.js"></script>
-    <script src="zxing-wasm-engine.js"></script>
-    <script src="html5-qrcode-engine.js"></script>
-    
-    <!-- Factory orquestadora -->
-    <script src="scanner-factory.js"></script>
-    
-    <!-- Módulo principal actualizado -->
-    <script src="scanner-module.js"></script>
-    <script src="view-manager.js"></script>
+    <!-- UI System v3.0 -->
+    <script src="src/utils/IconManager.js"></script>
+    <script src="src/ui/components/buttons/Button.js"></script>
+    <script src="src/ui/components/layout/Card.js"></script>
+    <script src="src/ui/components/layout/Header.js"></script>
+    <script src="src/ui/view-manager.js"></script>
 
     <style>
-        * {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        /* Estilos específicos de la aplicación */
+        .app-layout {
+            min-height: 100vh;
+            background: var(--gradient-app-bg);
+            position: relative;
         }
-        
+
+        .app-content {
+            width: 100%;
+            max-width: 32rem;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid rgba(255, 255, 255, 0.3);
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @media (min-width: 768px) {
+            .app-content {
+                min-height: 95vh;
+                margin: 2vh auto;
+                border-radius: var(--radius-3xl);
+                box-shadow: var(--shadow-2xl);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+        }
+
+        /* Estilos específicos del scanner */
         .scanner-overlay {
             background: linear-gradient(45deg, transparent 30%, rgba(59, 130, 246, 0.1) 50%, transparent 70%);
             animation: scan 2s linear infinite;
         }
         
-        @keyframes scan {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .slide-up {
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(100%); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Splash screen específico */
+        .splash-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: var(--z-modal);
+            transition: opacity var(--duration-slow) var(--ease-out);
         }
 
-        .focus-ring:focus {
-            outline: 2px solid #3B82F6;
+        .splash-content {
+            text-align: center;
+            color: white;
+        }
+
+        .splash-logo {
+            width: 6rem;
+            height: 6rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-3xl);
+            backdrop-filter: blur(8px);
+            margin: 0 auto var(--spacing-6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+        }
+
+        .splash-title {
+            font-size: var(--text-4xl);
+            font-weight: var(--font-extrabold);
+            margin: 0 0 var(--spacing-2) 0;
+            letter-spacing: -0.025em;
+        }
+
+        .splash-subtitle {
+            font-size: var(--text-lg);
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0;
+        }
+
+        /* Focus ring mejorado */
+        .focus-ring:focus-visible {
+            outline: 2px solid var(--color-primary-500);
             outline-offset: 2px;
-        }
-
-        .pulse-button {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-500 font-inter">
+<body class="font-primary" data-theme="light">
 
     <!-- Splash Screen -->
-    <div id="splash-screen" class="fixed inset-0 bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center z-50 transition-opacity duration-500">
-        <div class="text-center text-white">
-            <div class="mb-6">
-                <svg class="w-24 h-24 mx-auto mb-4 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/>
-                </svg>
+    <div id="splash-screen" class="splash-screen fade-in">
+        <div class="splash-content">
+            <div class="splash-logo">
+                <span style="color: var(--color-primary-300);">M</span>
+                <span style="color: var(--color-primary-200); margin: 0 var(--spacing-1);">||</span>
+                <span style="color: var(--color-primary-100);">S</span>
             </div>
-            <h1 class="text-4xl font-bold mb-2">Mega||Scan</h1>
-            <p class="text-blue-100 text-lg">Cargando...</p>
+            <h1 class="splash-title">Mega||Scan</h1>
+            <p class="splash-subtitle">Cargando sistema híbrido...</p>
         </div>
     </div>
 
-    <main id="app-root" class="w-full max-w-lg mx-auto bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm min-h-screen md:min-h-[95vh] md:my-4 md:shadow-2xl md:rounded-3xl flex flex-col overflow-hidden border border-white/30 dark:border-slate-700/50">
-        <!-- El contenido se inyectará aquí -->
+    <main id="app-root" class="app-layout">
+        <div class="app-content">
+            <!-- El contenido se inyectará aquí -->
+        </div>
     </main>
 
     <script>
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(registration => console.log('SW registered'))
-                    .catch(error => console.log('SW registration failed'));
+                navigator.serviceWorker.register('./public/sw.js')
+                    .then(registration => console.log('✅ SW registered'))
+                    .catch(error => console.log('❌ SW registration failed:', error));
             });
         }
 
         // --- CONFIGURACIÓN ---
         const APP_CONFIG = {
-            VERSION: '2.0.0', // ACTUALIZADO: Nueva versión con arquitectura híbrida
+            VERSION: '3.0.0', // ACTUALIZADO: Nueva versión con Design System
             NAME: 'Mega||Scan',
-            DESCRIPTION: 'La forma más rápida de obtener información de cualquier producto - Ahora con motores de alto rendimiento'
+            DESCRIPTION: 'La forma más rápida de obtener información de cualquier producto - Ahora con Design System v3.0'
         };
 
         const SUPABASE_URL = 'https://srsedippxqjpetcfcaae.supabase.co';
@@ -152,29 +190,52 @@
         let appState = 'HOME';
         let scannedProduct = null;
         let productMaterials = null;
-        let scanner = null; // Instancia del módulo scanner
-        let viewManager = null; // Instancia del ViewManager
-        let lastScannedBarcode = null; // NUEVO: Para recordar el último código escaneado
+        let scanner = null;
+        let viewManager = null;
+        let lastScannedBarcode = null;
+        
+        // NUEVO: Instancias del Design System
+        let iconManager = null;
+        let button = null;
+        let card = null;
+        let header = null;
 
-        const appRoot = document.getElementById('app-root');
+        const appRoot = document.getElementById('app-root').querySelector('.app-content');
 
         // --- FUNCIONES AUXILIARES MEJORADAS ---
         function showNotification(message, type = 'info') {
-            // MEJORADO: Solo mostrar notificaciones críticas
+            // Usar nuevo sistema de notificaciones (implementaremos después)
             const criticalMessages = ['error', 'denegado', 'bloqueado', 'adblocker', 'conexión', 'red'];
             const isCritical = criticalMessages.some(keyword => message.toLowerCase().includes(keyword));
             
             if (!isCritical && type !== 'error') {
                 console.log('📢 Notificación omitida (no crítica):', message);
-                return; // No mostrar notificaciones no críticas
+                return;
             }
             
+            // Implementación temporal - mejoraremos con componentes
             const notification = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-red-500 text-white' : 
-                           type === 'success' ? 'bg-green-500 text-white' : 
-                           'bg-blue-500 text-white';
+            const bgColor = type === 'error' ? 'var(--color-error-500)' : 
+                           type === 'success' ? 'var(--color-success-500)' : 
+                           'var(--color-info-500)';
             
-            notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-xl shadow-lg transition-all duration-300 ${bgColor} max-w-sm text-center text-sm`;
+            notification.style.cssText = `
+                position: fixed;
+                top: var(--spacing-4);
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: var(--z-toast);
+                padding: var(--spacing-4);
+                border-radius: var(--radius-xl);
+                box-shadow: var(--shadow-lg);
+                background: ${bgColor};
+                color: white;
+                max-width: 20rem;
+                text-align: center;
+                font-size: var(--text-sm);
+                font-weight: var(--font-medium);
+                transition: all var(--duration-normal) var(--ease-out);
+            `;
             notification.textContent = message;
             
             document.body.appendChild(notification);
@@ -195,7 +256,6 @@
                 switch (appState) {
                     case 'SCANNER':
                         const scannerStatus = scanner ? scanner.getStatus() : { cameraPermissionStatus: 'unknown' };
-                        // MEJORADO: Pasar información de errores para detección de escritorio
                         if (scanner && scanner.lastErrorMessage) {
                             scannerStatus.lastErrorMessage = scanner.lastErrorMessage;
                         }
@@ -221,7 +281,7 @@
                         viewData.product = scannedProduct;
                         viewData.materials = productMaterials;
                         break;
-                    case 'PRODUCT_NOT_FOUND': // NUEVO estado
+                    case 'PRODUCT_NOT_FOUND':
                         viewData.barcode = lastScannedBarcode;
                         break;
                     case 'ERROR':
@@ -267,7 +327,16 @@
                         appState = 'HOME';
                         scannedProduct = null;
                         productMaterials = null;
-                        lastScannedBarcode = null; // NUEVO: Limpiar último código
+                        lastScannedBarcode = null;
+                        render();
+                        break;
+                    case 'go-back':
+                        // Lógica de navegación hacia atrás
+                        if (appState === 'MATERIALS') {
+                            appState = 'PRODUCT';
+                        } else if (appState === 'PRODUCT' || appState === 'SCANNER') {
+                            appState = 'HOME';
+                        }
                         render();
                         break;
                     case 'back-to-product':
@@ -282,6 +351,9 @@
                     case 'manual-submit':
                         handleManualSubmit(event);
                         break;
+                    case 'reload-page':
+                        location.reload();
+                        break;
                 }
             } catch (error) {
                 console.error('Error manejando evento:', error);
@@ -292,30 +364,21 @@
         async function activateCamera() {
             try {
                 await scanner.activateCamera();
-                
-                // Actualizar la vista para mostrar el escáner
                 render();
-                
-                // Inicializar el escáner después de actualizar la vista
                 setTimeout(() => {
                     scanner.initializeScanner();
                 }, 500);
-                
             } catch (error) {
-                // MEJORADO: Capturar mensaje de error específico
                 const errorMessage = scanner.getErrorMessage(error);
                 scanner.lastErrorMessage = errorMessage;
                 
-                // NUEVO: Si es escritorio sin cámara, mantener en vista scanner con mensaje
                 if (error.message === 'DESKTOP_NO_CAMERA' || errorMessage.includes('No se detectó ninguna cámara en este dispositivo')) {
                     console.log('🖥️ Escritorio sin cámara detectado, mostrando input manual');
-                    // Actualizar scanner status para mostrar mensaje amigable
                     scanner.cameraPermissionStatus = 'desktop_no_camera';
-                    render(); // Re-renderizar scanner con mensaje de escritorio
+                    render();
                     return;
                 }
                 
-                // Para otros errores técnicos, ir a pantalla de error
                 setTimeout(() => {
                     appState = 'ERROR';
                     appRoot.innerHTML = viewManager.render('ERROR', { message: errorMessage });
@@ -347,7 +410,7 @@
         // --- FUNCIONES DE BÚSQUEDA MEJORADAS ---
         async function searchProduct(barcode) {
             appState = 'LOADING';
-            lastScannedBarcode = barcode; // NUEVO: Recordar el código escaneado
+            lastScannedBarcode = barcode;
             render();
 
             try {
@@ -378,12 +441,9 @@
                         Status: data.Status || 'Activo'
                     };
                     appState = 'PRODUCT';
-                    // ELIMINADO: showNotification('Producto encontrado', 'success');
                     console.log('✅ Producto encontrado:', scannedProduct);
                 } else {
-                    // CAMBIADO: Usar estado PRODUCT_NOT_FOUND en lugar de ERROR
                     appState = 'PRODUCT_NOT_FOUND';
-                    // ELIMINADO: showNotification('Producto no encontrado', 'error');
                     console.log('❌ Producto no encontrado para código:', cleanBarcode);
                 }
                 
@@ -392,7 +452,7 @@
                 console.error('Error buscando producto:', error);
                 appState = 'ERROR';
                 render();
-                showNotification('Error en la búsqueda', 'error'); // MANTENIDO: Error crítico
+                showNotification('Error en la búsqueda', 'error');
             }
         }
 
@@ -430,7 +490,6 @@
                 appState = 'MATERIALS';
                 render();
                 
-                // ELIMINADO: Notificación de materiales encontrados (redundante)
                 const count = productMaterials.length;
                 console.log(`✅ ${count} material${count !== 1 ? 'es' : ''} encontrado${count !== 1 ? 's' : ''}:`, productMaterials);
             } catch (error) {
@@ -438,7 +497,7 @@
                 productMaterials = [];
                 appState = 'MATERIALS';
                 render();
-                showNotification('Error cargando materiales', 'error'); // MANTENIDO: Error crítico
+                showNotification('Error cargando materiales', 'error');
             }
         }
 
@@ -452,7 +511,13 @@
         }
 
         async function initApp() {
-            console.log('🚀 Inicializando aplicación...');
+            console.log('🚀 Inicializando aplicación con Design System v3.0...');
+            
+            // Inicializar Design System
+            iconManager = new IconManager();
+            button = Button;
+            card = Card;
+            header = Header;
             
             // Inicializar ViewManager
             viewManager = new ViewManager(APP_CONFIG);
@@ -460,14 +525,13 @@
             // Crear instancia del escáner
             scanner = new ScannerModule();
             
-            // Configurar callbacks MEJORADOS con arquitectura híbrida
+            // Configurar callbacks del scanner
             scanner.setCallbacks({
                 onScanSuccess: (decodedText, decodedResult) => {
                     console.log('🎯 Escaneo exitoso con:', decodedResult.engine || 'motor desconocido');
                     searchProduct(decodedText);
                 },
                 onScanError: (error, message) => {
-                    // Solo notificar errores críticos
                     if (message.includes('adblocker') || message.includes('conexión') || message.includes('permisos')) {
                         showNotification(message, 'error');
                     }
@@ -486,12 +550,14 @@
                 }
             });
             
-            // MEJORADO: Verificar permisos persistentes al inicio
+            // Verificar permisos persistentes
             await scanner.checkPersistedPermissions();
             
+            // Ocultar splash screen y mostrar app
             setTimeout(hideSplashScreen, 1500);
             render();
             
+            // Configurar event listeners
             document.addEventListener('click', handleEvents);
             document.addEventListener('submit', handleEvents);
             
@@ -507,49 +573,26 @@
                 }
             });
             
-            // Limpiar recursos al cerrar la página
             window.addEventListener('beforeunload', () => {
                 if (scanner) {
                     scanner.destroy();
                 }
             });
             
-            console.log('✅ Aplicación inicializada con arquitectura híbrida v2.0');
+            console.log('✅ Aplicación inicializada con Design System v3.0');
             
-            // Debug visual mejorado para desarrollo
+            // Debug info mejorado
             if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-                console.log('🛠️ MODO DEBUG ACTIVADO - Información detallada disponible');
+                console.log('🛠️ MODO DEBUG ACTIVADO');
                 
-                // Mostrar información del motor disponible
                 setTimeout(async () => {
                     try {
                         const engineInfo = scanner.getEngineInfo();
                         if (engineInfo) {
-                            console.log('🔧 Motor de escaneo disponible:', engineInfo.name);
-                            console.log('⚡ Rendimiento estimado:', engineInfo.performance);
-                            console.log('📋 Capacidades:', engineInfo.capabilities);
-                            
-                            // Mostrar estadísticas de la factory
-                            const factoryStats = scanner.scannerFactory?.getStats();
-                            if (factoryStats) {
-                                console.log('📊 Factory Stats:', factoryStats);
-                            }
-                            
-                            // Añadir indicador visual en la UI
-                            const debugIndicator = document.createElement('div');
-                            debugIndicator.innerHTML = `
-                                <div style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 8px; font-family: monospace; font-size: 12px; z-index: 9999; max-width: 200px;">
-                                    <div style="color: #4ade80;">🔧 ${engineInfo.name}</div>
-                                    <div style="color: #60a5fa;">⚡ ${engineInfo.performance}</div>
-                                    <div style="color: #fbbf24;">📱 ${navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Escritorio'}</div>
-                                </div>
-                            `;
-                            document.body.appendChild(debugIndicator);
-                            
-                            // Auto-ocultar después de 5 segundos
-                            setTimeout(() => {
-                                debugIndicator.style.opacity = '0.3';
-                            }, 5000);
+                            console.log('🔧 Motor de escaneo:', engineInfo.name);
+                            console.log('⚡ Rendimiento:', engineInfo.performance);
+                            console.log('🎨 Design System v3.0 activo');
+                            console.log('📱 Icons disponibles:', iconManager.list());
                         }
                     } catch (e) {
                         console.log('ℹ️ Información del motor disponible después de la primera inicialización');
@@ -558,30 +601,19 @@
                 
                 // Función de debug global
                 window.debugMegaScan = () => {
-                    console.log('=== 🛠️ MEGA SCAN DEBUG INFO ===');
+                    console.log('=== 🛠️ MEGA SCAN DEBUG INFO v3.0 ===');
                     console.log('Motor actual:', scanner.getEngineInfo());
                     console.log('Estado:', scanner.getStatus());
                     console.log('Estadísticas:', scanner.getDetailedStats());
-                    if (scanner.scannerFactory?.capabilityDetector) {
-                        console.log('Capacidades:', scanner.scannerFactory.capabilityDetector.getCapabilities());
-                    }
+                    console.log('Design System:', {
+                        iconManager: iconManager,
+                        availableIcons: iconManager.list(),
+                        components: { button, card, header }
+                    });
                     console.log('=== FIN DEBUG INFO ===');
                 };
                 
                 console.log('💡 Tip: Ejecuta debugMegaScan() en consola para información completa');
-            } else {
-                // Log información básica en producción
-                setTimeout(async () => {
-                    try {
-                        const engineInfo = scanner.getEngineInfo();
-                        if (engineInfo) {
-                            console.log('🔧 Motor de escaneo disponible:', engineInfo.name);
-                            console.log('⚡ Rendimiento estimado:', engineInfo.performance);
-                        }
-                    } catch (e) {
-                        console.log('ℹ️ Información del motor disponible después de la primera inicialización');
-                    }
-                }, 1000);
             }
         }
 

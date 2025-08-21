@@ -1,74 +1,134 @@
 /**
- * ViewManager - Sistema de renderizado modular
- * Maneja todas las vistas de la aplicación de forma centralizada
- * Versión: 1.1.0 - Mejoras en UX y mensajes informativos
+ * ViewManager v3.0 - Sistema de renderizado modular refactorizado
+ * Para reemplazar src/ui/view-manager.js
+ * Versión: 3.0.0 - Arquitectura modular y optimizada para PWA
  */
 
 class ViewManager {
     constructor(config = {}) {
         this.config = {
             appName: config.NAME || 'Mega||Scan',
-            version: config.VERSION || '1.6.1',
+            version: config.VERSION || '3.0.0',
             description: config.DESCRIPTION || 'La forma más rápida de obtener información de cualquier producto',
             ...config
         };
         
-        this.icons = this.initializeIcons();
+        // Inicializar componentes del Design System con verificación segura
+        this.initializeComponents();
     }
 
     /**
-     * Inicializar conjunto de iconos SVG
+     * Inicializar componentes del Design System de forma segura
      */
-    initializeIcons() {
-        return {
+    initializeComponents() {
+        // IconManager
+        try {
+            this.iconManager = (typeof IconManager !== 'undefined') ? new IconManager() : null;
+        } catch (e) {
+            console.warn('IconManager no disponible:', e.message);
+            this.iconManager = null;
+        }
+        
+        // Componentes estáticos
+        this.Button = (typeof Button !== 'undefined') ? Button : null;
+        this.Card = (typeof Card !== 'undefined') ? Card : null;
+        this.Header = (typeof Header !== 'undefined') ? Header : null;
+        
+        // Log de estado de componentes
+        const availableComponents = [
+            this.iconManager && 'IconManager',
+            this.Button && 'Button',
+            this.Card && 'Card', 
+            this.Header && 'Header'
+        ].filter(Boolean);
+        
+        if (availableComponents.length > 0) {
+            console.log(`✅ Design System v3.0 - Componentes disponibles: ${availableComponents.join(', ')}`);
+        } else {
+            console.log('⚠️ ViewManager funcionando en modo fallback (sin Design System)');
+        }
+    }
+
+    /**
+     * Obtener icono de forma segura
+     */
+    getIcon(name, customClass = '') {
+        if (this.iconManager) {
+            return this.iconManager.get(name, customClass);
+        }
+        
+        // Fallback: iconos básicos SVG
+        const fallbackIcons = {
             camera: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9zM15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
             home: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>`,
             search: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>`,
-            package: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>`,
+            package: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>`,
             arrowLeft: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>`,
             loader: `<svg class="w-8 h-8 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`,
-            // CAMBIADO: Icono más suave para información en lugar de error
-            infoCircle: `<svg class="w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
-            // NUEVO: Icono específico para "no encontrado"
-            searchX: `<svg class="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6-6m0 6l6-6"/></svg>`,
             xCircle: `<svg class="w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+            searchX: `<svg class="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6-6m0 6l6-6"/></svg>`,
             play: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293L12 11l.707-.707A1 1 0 0113.414 10H15M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
-            // NUEVO: Icono para escritorio sin cámara
-            desktopComputer: `<svg class="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>`
+            desktopComputer: `<svg class="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>`,
+            arrowDown: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m0 7h14"/></svg>`
         };
+        
+        const icon = fallbackIcons[name] || fallbackIcons.search;
+        return customClass ? icon.replace(/w-\d+ h-\d+/, customClass) : icon;
     }
 
     /**
-     * Generar imagen placeholder para productos
+     * Generar imagen placeholder optimizada para productos
      */
     generatePlaceholderImage() {
-        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M1Y5OEg4N1Y3NFoiIGZpbGw9IiM5Q0E0QUYiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZGlzcGxheTpibG9jazsgbWFyZ2luOmF1dG87Ij4KPHBhdGggZD0iTTMgNXYxNCIgc3Ryb2tlPSIjNjM2NTc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOCA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNyA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi/+CjxwYXRoIGQ9Ik0yMSA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo8L3N2Zz4K';
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA3NEg2M1Y5OEg4N1Y3NFoiIGZpbGw9IiM5Q0E0QUYiLz4KPHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZGlzcGxheTpibG9jazsgbWFyZ2luOmF1dG87Ij4KPHBhdGggZD0iTTMgNXYxNCIgc3Ryb2tlPSIjNjM2NTc3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOCA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMiA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi/+CjxwYXRoIGQ9Ik0xNyA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi/+CjxwYXRoIGQ9Ik0yMSA1djE0IiBzdHJva2U9IiM2MzY1NzciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi/+Cjwvc3ZnPgo8L3N2Zz4K';
     }
 
     // ===== VISTA HOME =====
     renderHomeView() {
+        const logoComponent = `
+            <div class="w-28 h-28 bg-white rounded-3xl flex items-center justify-center shadow-lg mb-6 p-2">
+                <div class="w-full h-full flex items-center justify-center text-2xl font-bold">
+                    <span class="text-blue-600">M</span>
+                    <span class="text-blue-500 mx-1">||</span>
+                    <span class="text-blue-400">S</span>
+                </div>
+            </div>
+        `;
+
+        // Usar componente Button si está disponible, sino fallback al HTML
+        let scanButton;
+        if (this.Button) {
+            scanButton = this.Button.create({
+                variant: 'primary',
+                size: 'lg',
+                icon: this.getIcon('camera'),
+                children: 'Iniciar Escáner',
+                action: 'navigate-scanner',
+                fullWidth: true,
+                className: 'text-lg gap-3 py-4'
+            });
+        } else {
+            scanButton = `
+                <button data-action="navigate-scanner" class="focus-ring w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl text-lg gap-3">
+                    ${this.getIcon('camera')} Iniciar Escáner
+                </button>
+            `;
+        }
+
         return `
             <div class="flex flex-col items-center justify-center text-center p-8 h-full flex-1 relative fade-in">
                 <div class="absolute top-10 left-10 w-20 h-20 bg-blue-200/20 dark:bg-blue-800/20 rounded-full blur-xl"></div>
                 <div class="absolute bottom-20 right-10 w-32 h-32 bg-purple-200/20 dark:bg-purple-800/20 rounded-full blur-xl"></div>
                 
                 <div class="mb-8 relative z-10">
-                    <div class="w-28 h-28 bg-white rounded-3xl flex items-center justify-center shadow-lg mb-6 p-2">
-                        <div class="w-full h-full flex items-center justify-center text-2xl font-bold">
-                            <span class="text-blue-600">M</span>
-                            <span class="text-blue-500 mx-1">||</span>
-                            <span class="text-blue-400">S</span>
-                        </div>
-                    </div>
+                    ${logoComponent}
                 </div>
                 
                 <h1 class="text-5xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-8">${this.config.appName}</h1>
                 <p class="text-lg text-slate-600 dark:text-slate-400 mb-12 max-w-xs leading-relaxed">${this.config.description}</p>
                 
                 <div class="w-full max-w-xs space-y-4">
-                    <button data-action="navigate-scanner" class="focus-ring w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl text-lg gap-3">
-                        ${this.icons.camera} Iniciar Escáner
-                    </button>
+                    ${scanButton}
                 </div>
                 
                 <div class="mt-16 text-center">
@@ -81,9 +141,12 @@ class ViewManager {
     renderScannerView(scannerStatus = {}) {
         const needsActivation = scannerStatus.cameraPermissionStatus !== 'granted' || !scannerStatus.hasRequestedPermissionBefore;
         
+        // Crear header usando nuevo sistema o fallback
+        const headerComponent = this.renderHeader('Escanear Producto', true);
+
         return `
             <div class="flex flex-col h-full flex-1 slide-up">
-                ${this.renderHeader('Escanear Producto', true)}
+                ${headerComponent}
                 
                 <div class="relative flex-1 bg-black flex items-center justify-center mx-4 mt-4 rounded-2xl overflow-hidden shadow-2xl">
                     <div id="qr-reader" class="w-full h-full bg-black ${needsActivation ? 'hidden' : ''}"></div>
@@ -101,14 +164,40 @@ class ViewManager {
 
     renderCameraActivation(scannerStatus) {
         const isDenied = scannerStatus.cameraPermissionStatus === 'denied';
-        // MEJORADO: Detectar escritorio sin cámara por estado específico
         const isDesktopNoCamera = scannerStatus.cameraPermissionStatus === 'desktop_no_camera' || 
                                  (scannerStatus.lastErrorMessage && scannerStatus.lastErrorMessage.includes('No se detectó ninguna cámara en este dispositivo'));
         
+        let activationButton = '';
+        
+        if (isDenied) {
+            activationButton = `
+                <button onclick="location.reload()" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
+                    🔄 Recargar Página
+                </button>
+            `;
+        } else if (!isDesktopNoCamera) {
+            activationButton = `
+                <button data-action="activate-camera" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 pulse-button">
+                    ${this.getIcon('play')} Activar Cámara
+                </button>
+            `;
+        }
+
+        const iconDisplay = isDesktopNoCamera ? 
+            this.getIcon('desktopComputer', 'w-16 h-16') : 
+            this.getIcon('camera', 'w-16 h-16');
+
+        const hintText = isDesktopNoCamera ? `
+            <div class="text-white/60 text-sm flex items-center gap-2">
+                ${this.getIcon('arrowDown')}
+                Usar entrada manual
+            </div>
+        ` : '';
+
         return `
             <div class="absolute inset-0 flex flex-col items-center justify-center p-6 text-white text-center">
                 <div class="mb-6">
-                    ${isDesktopNoCamera ? this.icons.desktopComputer : this.icons.camera.replace('w-6 h-6', 'w-16 h-16')}
+                    ${iconDisplay}
                 </div>
                 <h3 class="text-xl font-semibold mb-4">
                     ${isDesktopNoCamera ? 'Sin Cámara Disponible' : 'Activar Cámara'}
@@ -121,41 +210,32 @@ class ViewManager {
                         : 'Para escanear códigos de barras necesitamos acceso a tu cámara.'
                     }
                 </p>
-                ${isDenied ? `
-                    <button onclick="location.reload()" class="focus-ring bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200">
-                        🔄 Recargar Página
-                    </button>
-                ` : isDesktopNoCamera ? `
-                    <div class="text-white/60 text-sm flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m0 7h14"/>
-                        </svg>
-                        Usar entrada manual
-                    </div>
-                ` : `
-                    <button data-action="activate-camera" class="focus-ring bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 pulse-button">
-                        ${this.icons.play} Activar Cámara
-                    </button>
-                `}
+                ${activationButton}
+                ${hintText}
             </div>`;
     }
 
     renderScannerTarget() {
         return `
             <div class="absolute inset-0 flex items-center justify-center">
-                <!-- MEJORADO: Área de escaneo más ancha (rectangular) -->
                 <div class="w-4/5 max-w-sm" style="aspect-ratio: 1.6;">
                     <div class="absolute inset-0 border-2 border-white/30 rounded-2xl"></div>
                     <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-2xl"></div>
                     <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-2xl"></div>
                     <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-2xl"></div>
                     <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-2xl"></div>
-                    <div class="scanner-overlay absolute inset-0 rounded-2xl"></div>
+                    <div class="scanner-sweep absolute inset-0 rounded-2xl"></div>
                 </div>
             </div>`;
     }
 
     renderManualInput() {
+        const submitButton = `
+            <button type="submit" class="focus-ring bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 active:scale-95 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-2">
+                ${this.getIcon('search')}
+            </button>
+        `;
+
         return `
             <div class="p-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-t border-slate-200/50 dark:border-slate-700/50">
                 <div class="relative flex py-3 items-center mb-4">
@@ -173,12 +253,7 @@ class ViewManager {
                         required
                         autocomplete="off"
                     >
-                    <button 
-                        type="submit" 
-                        class="focus-ring bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 active:scale-95 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-2"
-                    >
-                        ${this.icons.search}
-                    </button>
+                    ${submitButton}
                 </form>
             </div>`;
     }
@@ -201,7 +276,7 @@ class ViewManager {
                 <div class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-slate-800/50 dark:to-slate-900/50"></div>
                 <div class="relative z-10">
                     <div class="mb-6">
-                        ${this.icons.loader.replace('w-8 h-8', 'w-16 h-16 text-blue-600')}
+                        ${this.getIcon('loader', 'w-16 h-16 text-blue-600')}
                     </div>
                     <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">${message}</h3>
                     <div class="w-48 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -211,12 +286,12 @@ class ViewManager {
             </div>`;
     }
 
-    // ===== VISTA PRODUCTO NO ENCONTRADO - NUEVA =====
+    // ===== VISTA PRODUCTO NO ENCONTRADO =====
     renderProductNotFoundView(barcode) {
         return `
             <div class="flex flex-col items-center justify-center h-full text-center p-8 flex-1 fade-in">
                 <div class="mb-6">
-                    ${this.icons.searchX}
+                    ${this.getIcon('searchX')}
                 </div>
                 <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Producto No Encontrado</h3>
                 <p class="text-slate-600 dark:text-slate-400 mb-2 max-w-sm leading-relaxed">
@@ -240,11 +315,11 @@ class ViewManager {
     renderErrorView(message = 'Ha ocurrido un error') {
         const showReloadButton = message.includes('adblocker') || message.includes('librería') || 
                                 message.includes('escáner') || message.includes('conexión');
-        
+
         return `
             <div class="flex flex-col items-center justify-center h-full text-center p-8 flex-1 fade-in">
                 <div class="mb-6">
-                    ${this.icons.xCircle}
+                    ${this.getIcon('xCircle')}
                 </div>
                 <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Error Técnico</h3>
                 <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-sm leading-relaxed">${message}</p>
@@ -263,9 +338,11 @@ class ViewManager {
 
     // ===== VISTA PRODUCTO =====
     renderProductView(product) {
+        const headerComponent = this.renderHeader('Producto Encontrado', true);
+
         return `
             <div class="flex flex-col h-full flex-1 slide-up">
-                ${this.renderHeader('Producto Encontrado', true)}
+                ${headerComponent}
                 
                 <div class="flex-1 px-6 pb-6 overflow-auto">
                     ${this.renderProductImage(product)}
@@ -317,7 +394,7 @@ class ViewManager {
             <footer class="p-6 border-t border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm">
                 <div class="flex gap-3">
                     <button data-action="view-materials" class="focus-ring flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
-                        ${this.icons.package} Ver Materiales
+                        ${this.getIcon('package')} Ver Materiales
                     </button>
                     <button data-action="go-home" class="focus-ring flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-3 px-4 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-600 active:scale-95 transition-all duration-200">
                         Nuevo Escaneo
@@ -328,9 +405,21 @@ class ViewManager {
 
     // ===== VISTA MATERIALES =====
     renderMaterialsView(product, materials) {
+        const headerComponent = `
+            <header class="p-4 flex items-center text-slate-800 dark:text-white backdrop-blur-sm bg-white/90 dark:bg-slate-800/90 border-b border-slate-200/50 dark:border-slate-700/50">
+                <button data-action="back-to-product" class="focus-ring p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200 active:scale-95 mr-3">
+                    ${this.getIcon('arrowLeft')}
+                </button>
+                <div class="flex-1">
+                    <h1 class="text-xl font-semibold">Materiales</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 truncate">${product.Name}</p>
+                </div>
+            </header>
+        `;
+
         return `
             <div class="flex flex-col h-full flex-1 slide-up">
-                ${this.renderMaterialsHeader(product)}
+                ${headerComponent}
                 
                 <div class="flex-1 overflow-auto p-4">
                     ${materials && materials.length > 0 ? 
@@ -343,21 +432,8 @@ class ViewManager {
             </div>`;
     }
 
-    renderMaterialsHeader(product) {
-        return `
-            <header class="p-4 flex items-center text-slate-800 dark:text-white backdrop-blur-sm bg-white/90 dark:bg-slate-800/90 border-b border-slate-200/50 dark:border-slate-700/50">
-                <button data-action="back-to-product" class="focus-ring p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200 active:scale-95 mr-3">
-                    ${this.icons.arrowLeft}
-                </button>
-                <div class="flex-1">
-                    <h1 class="text-xl font-semibold">Materiales</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 truncate">${product.Name}</p>
-                </div>
-            </header>`;
-    }
-
     renderMaterialsTable(materials) {
-        return `
+        const tableCard = `
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden mb-4">
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -382,8 +458,9 @@ class ViewManager {
                     </table>
                 </div>
             </div>
-            
-            <!-- MEJORADO: Sin notificación redundante, solo información visual -->
+        `;
+
+        const infoCard = `
             <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                 <div class="flex items-center mb-2">
                     <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
@@ -392,14 +469,17 @@ class ViewManager {
                 <p class="text-sm text-blue-700 dark:text-blue-300">
                     Se encontraron <strong>${materials.length}</strong> materiales para este producto.
                 </p>
-            </div>`;
+            </div>
+        `;
+
+        return tableCard + infoCard;
     }
 
     renderNoMaterials() {
         return `
             <div class="flex flex-col items-center justify-center h-64 text-center">
                 <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
-                    ${this.icons.package.replace('w-6 h-6', 'w-8 h-8 text-slate-400')}
+                    ${this.getIcon('package', 'w-8 h-8 text-slate-400')}
                 </div>
                 <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Sin materiales</h3>
                 <p class="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
@@ -432,17 +512,17 @@ class ViewManager {
             <header class="p-6 text-center relative bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 border-b border-slate-200/50 dark:border-slate-700/50">
                 ${showHomeButton ? `
                     <button data-action="go-home" class="focus-ring absolute left-6 top-1/2 -translate-y-1/2 p-3 rounded-xl hover:bg-white/70 dark:hover:bg-slate-600/70 transition-all duration-200 active:scale-95">
-                        ${this.icons.home}
+                        ${this.getIcon('home')}
                     </button>
                 ` : ''}
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white">${title}</h1>
             </header>`;
     }
 
-    // ===== MÉTODOS PÚBLICOS =====
-
+    // ===== MÉTODO PRINCIPAL DE RENDERIZADO =====
+    
     /**
-     * Renderizar vista según el estado - MEJORADO
+     * Renderizar vista según el estado - Refactorizado con Design System v3.0
      */
     render(viewType, data = {}) {
         try {
@@ -456,7 +536,7 @@ class ViewManager {
                 case 'LOADING':
                     return this.renderLoadingView(data.message);
                     
-                case 'PRODUCT_NOT_FOUND': // NUEVO
+                case 'PRODUCT_NOT_FOUND':
                     return this.renderProductNotFoundView(data.barcode);
                     
                 case 'ERROR':
@@ -481,24 +561,117 @@ class ViewManager {
     }
 
     /**
-     * Obtener icono por nombre
+     * Métodos de utilidad del Design System
      */
-    getIcon(name, customClass = '') {
-        if (!this.icons[name]) {
-            console.warn(`Icono '${name}' no encontrado`);
-            return '';
-        }
-        
-        return customClass ? 
-            this.icons[name].replace('w-6 h-6', customClass) : 
-            this.icons[name];
+    createButton(options) {
+        return this.Button ? this.Button.create(options) : null;
+    }
+
+    createCard(options) {
+        return this.Card ? this.Card.create(options) : null;
+    }
+
+    createHeader(options) {
+        if (!this.Header) return null;
+        const headerInstance = new this.Header(this.iconManager);
+        return headerInstance.create(options);
     }
 
     /**
-     * Actualizar configuración
+     * Actualizar configuración del ViewManager
      */
     updateConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
+    }
+
+    /**
+     * Obtener información del sistema de componentes
+     */
+    getSystemInfo() {
+        return {
+            version: '3.0.0',
+            components: {
+                iconManager: this.iconManager ? this.iconManager.list() : [],
+                button: this.Button ? Object.keys(this.Button.variants || {}) : [],
+                card: this.Card ? ['default', 'elevated'] : [],
+                header: this.Header ? ['default', 'gradient'] : []
+            },
+            config: this.config,
+            dependenciesAvailable: {
+                IconManager: !!this.iconManager,
+                Button: !!this.Button,
+                Card: !!this.Card,
+                Header: !!this.Header
+            }
+        };
+    }
+
+    /**
+     * Validar dependencias del Design System
+     */
+    validateDependencies() {
+        const missing = [];
+
+        if (!this.iconManager || typeof this.iconManager.get !== 'function') {
+            missing.push('IconManager');
+        }
+
+        if (!this.Button || typeof this.Button.create !== 'function') {
+            missing.push('Button');
+        }
+
+        if (!this.Card || typeof this.Card.create !== 'function') {
+            missing.push('Card');
+        }
+
+        if (!this.Header) {
+            missing.push('Header');
+        }
+
+        if (missing.length > 0) {
+            console.warn('ViewManager: Componentes faltantes del Design System:', missing);
+            console.info('ViewManager funcionará con fallbacks al HTML anterior');
+            return false;
+        }
+
+        console.log('✅ ViewManager: Todos los componentes del Design System están disponibles');
+        return true;
+    }
+
+    /**
+     * Modo de depuración para desarrollo
+     */
+    enableDebugMode() {
+        if (typeof window !== 'undefined') {
+            window.viewManagerDebug = {
+                instance: this,
+                systemInfo: this.getSystemInfo(),
+                validateDeps: () => this.validateDependencies(),
+                renderTest: (view, data) => {
+                    console.log(`🔧 Renderizando vista de prueba: ${view}`);
+                    return this.render(view, data);
+                },
+                testAllViews: () => {
+                    const testData = {
+                        product: { id: 1, Name: 'Test', Barcode: '123', Description: 'Test product' },
+                        materials: [{ id: 1, Description: 'Test material' }],
+                        barcode: '123456789'
+                    };
+                    
+                    console.log('🧪 Probando todas las vistas...');
+                    ['HOME', 'SCANNER', 'LOADING', 'PRODUCT_NOT_FOUND', 'ERROR', 'PRODUCT', 'MATERIALS']
+                        .forEach(view => {
+                            try {
+                                this.render(view, view.includes('PRODUCT') ? testData : { barcode: testData.barcode });
+                                console.log(`✅ ${view}: OK`);
+                            } catch (e) {
+                                console.error(`❌ ${view}: ERROR -`, e.message);
+                            }
+                        });
+                }
+            };
+            console.log('🛠️ ViewManager Debug Mode activado. Usa window.viewManagerDebug');
+        }
     }
 }
 
