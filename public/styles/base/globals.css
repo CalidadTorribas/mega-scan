@@ -1,0 +1,196 @@
+/* ================================================================
+   ARCHIVO: src/styles/base/globals.css
+   ================================================================ */
+
+/**
+ * Estilos globales y variables semánticas corporativas
+ * Variables contextuales actualizadas con colores corporativos
+ * Verde: #4c8b2c | Marrón: #5e3326
+ */
+
+:root {
+  /* === SEMANTIC COLORS - LIGHT THEME (CORPORATIVO) === */
+  --color-surface-primary: #ffffff;
+  --color-surface-secondary: var(--color-neutral-50);
+  --color-surface-elevated: #ffffff;
+  --color-surface-overlay: rgba(0, 0, 0, 0.5);
+  
+  /* Textos con marrón corporativo */
+  --color-text-primary: var(--color-brown-700);     /* #5e3326 - Marrón corporativo */
+  --color-text-secondary: var(--color-brown-600);   /* Marrón más claro para secundarios */
+  --color-text-tertiary: var(--color-neutral-500);  /* Neutral para terciarios */
+  --color-text-inverse: #ffffff;
+  
+  /* Bordes con sutileza corporativa */
+  --color-border-primary: var(--color-neutral-200);
+  --color-border-secondary: var(--color-neutral-100);
+  --color-border-focus: var(--color-primary-500);   /* Verde corporativo para focus */
+  
+  /* === GRADIENT BACKGROUNDS CORPORATIVOS === */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+  --gradient-secondary: linear-gradient(135deg, var(--color-secondary-500), var(--color-secondary-600));
+  
+  /* Fondo de app con toque corporativo */
+  --gradient-app-bg: linear-gradient(135deg, 
+    var(--color-primary-50) 0%, 
+    white 45%, 
+    var(--color-brown-50) 85%, 
+    var(--color-primary-50) 100%
+  );
+  
+  /* Gradiente especial para splash screen corporativo */
+  --gradient-splash-bg: linear-gradient(135deg, 
+    var(--color-primary-600) 0%, 
+    var(--color-primary-500) 50%, 
+    var(--color-primary-400) 100%
+  );
+}
+
+/* === TEMA OSCURO CON ADAPTACIÓN CORPORATIVA === */
+[data-theme="dark"] {
+  --color-surface-primary: var(--color-neutral-900);
+  --color-surface-secondary: var(--color-neutral-800);
+  --color-surface-elevated: var(--color-neutral-700);
+  --color-surface-overlay: rgba(0, 0, 0, 0.8);
+  
+  /* Textos oscuros adaptados manteniendo identidad */
+  --color-text-primary: var(--color-neutral-50);
+  --color-text-secondary: var(--color-brown-200);    /* Toque marrón sutil */
+  --color-text-tertiary: var(--color-neutral-400);
+  
+  /* Bordes oscuros con hint corporativo */
+  --color-border-primary: var(--color-neutral-700);
+  --color-border-secondary: var(--color-neutral-800);
+  --color-border-focus: var(--color-primary-400);    /* Verde más claro para tema oscuro */
+  
+  /* Fondos oscuros con sutileza corporativa */
+  --gradient-app-bg: linear-gradient(135deg, 
+    var(--color-neutral-900) 0%, 
+    var(--color-neutral-800) 50%, 
+    color-mix(in srgb, var(--color-primary-900) 10%, var(--color-neutral-800)) 100%
+  );
+  
+  --gradient-splash-bg: linear-gradient(135deg, 
+    var(--color-primary-800) 0%, 
+    var(--color-primary-700) 50%, 
+    var(--color-primary-600) 100%
+  );
+}
+
+/* === UTILIDADES GLOBALES CORPORATIVAS === */
+
+/* Animaciones globales */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseScale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Animación corporativa especial para elementos destacados */
+@keyframes corporateGlow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(76, 139, 44, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(76, 139, 44, 0.6), 0 0 30px rgba(76, 139, 44, 0.3);
+  }
+}
+
+/* Clases de utilidad para animaciones */
+.fade-in {
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.slide-up {
+  animation: slideUp var(--duration-normal) var(--ease-out);
+}
+
+.pulse-scale {
+  animation: pulseScale 2s infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.corporate-glow {
+  animation: corporateGlow 3s ease-in-out infinite;
+}
+
+/* === UTILIDADES CORPORATIVAS ESPECÍFICAS === */
+
+/* Texto con gradiente corporativo */
+.text-corporate-gradient {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-brown-600));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Fondo con patrón corporativo sutil */
+.bg-corporate-pattern {
+  background-image: 
+    radial-gradient(circle at 20% 50%, var(--color-primary-100) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, var(--color-brown-100) 0%, transparent 50%);
+}
+
+/* Utilidades de display */
+.hidden { display: none !important; }
+.block { display: block !important; }
+.flex { display: flex !important; }
+.inline-flex { display: inline-flex !important; }
+
+/* Utilidades de texto */
+.text-center { text-align: center !important; }
+.text-left { text-align: left !important; }
+.text-right { text-align: right !important; }
+
+/* Utilidades de overflow */
+.overflow-hidden { overflow: hidden !important; }
+.overflow-auto { overflow: auto !important; }
+
+/* === VARIABLES ESPECÍFICAS PARA LOGO CORPORATIVO === */
+:root {
+  /* Fondos seguros para logo SVG blanco */
+  --logo-bg-primary: var(--color-primary-500);
+  --logo-bg-secondary: linear-gradient(135deg, var(--color-primary-500), var(--color-brown-700));
+  --logo-bg-glass: rgba(76, 139, 44, 0.1);
+  --logo-backdrop: blur(8px);
+}
+
+[data-theme="dark"] {
+  --logo-bg-primary: var(--color-primary-600);
+  --logo-bg-secondary: linear-gradient(135deg, var(--color-primary-600), var(--color-brown-600));
+  --logo-bg-glass: rgba(76, 139, 44, 0.2);
+}

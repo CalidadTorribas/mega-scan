@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mega||Scan - Escáner de Códigos de Barras</title>
+    <title>Mega||Scan - Escaner de Codigos de Barras</title>
+    
+    <!-- Favicon y iconos PWA - RUTAS PARA DESARROLLO LOCAL -->
+    <link rel="icon" href="public/favicon.ico" sizes="any">
+    <link rel="icon" href="public/favicon-16x16.png" sizes="16x16" type="image/png">
+    <link rel="icon" href="public/favicon-32x32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="public/apple-touch-icon.png">
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#1E40AF">
+    <meta name="theme-color" content="#4c8b2c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Mega||Scan">
@@ -17,37 +23,37 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Design System v3.0 - CSS en orden correcto -->
-    <link rel="stylesheet" href="src/styles/design-tokens/colors.css">
-    <link rel="stylesheet" href="src/styles/design-tokens/typography.css">
-    <link rel="stylesheet" href="src/styles/design-tokens/spacing.css">
-    <link rel="stylesheet" href="src/styles/design-tokens/effects.css">
-    <link rel="stylesheet" href="src/styles/base/reset.css">
-    <link rel="stylesheet" href="src/styles/base/globals.css">
-    <link rel="stylesheet" href="src/styles/base/components.css">
-    <link rel="stylesheet" href="src/styles/themes/light.css">
-    <link rel="stylesheet" href="src/styles/themes/dark.css">
+    <!-- Design System v3.0 - CSS ACTIVADO CON RUTAS PARA DESARROLLO -->
+    <link rel="stylesheet" href="public/styles/design-tokens/colors.css">
+    <link rel="stylesheet" href="public/styles/design-tokens/typography.css">
+    <link rel="stylesheet" href="public/styles/design-tokens/spacing.css">
+    <link rel="stylesheet" href="public/styles/design-tokens/effects.css">
+    <link rel="stylesheet" href="public/styles/base/reset.css">
+    <link rel="stylesheet" href="public/styles/base/globals.css">
+    <link rel="stylesheet" href="public/styles/base/components.css">
+    <link rel="stylesheet" href="public/styles/themes/light.css">
+    <link rel="stylesheet" href="public/styles/themes/dark.css">
 
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Core Scanner System v2.1 -->
-    <script src="src/core/scanner/scanner-interfaces.js"></script>
-    <script src="src/core/scanner/barcode-detector-engine.js"></script>
-    <script src="src/core/scanner/zxing-wasm-engine.js"></script>
-    <script src="src/core/scanner/html5-qrcode-engine.js"></script>
-    <script src="src/core/scanner/scanner-factory.js"></script>
-    <script src="src/core/scanner/scanner-module.js"></script>
+    <!-- Core Scanner System v2.1 - RUTAS PARA DESARROLLO -->
+    <script src="public/core/scanner/scanner-interfaces.js"></script>
+    <script src="public/core/scanner/barcode-detector-engine.js"></script>
+    <script src="public/core/scanner/zxing-wasm-engine.js"></script>
+    <script src="public/core/scanner/html5-qrcode-engine.js"></script>
+    <script src="public/core/scanner/scanner-factory.js"></script>
+    <script src="public/core/scanner/scanner-module.js"></script>
     
-    <!-- UI System v3.0 -->
-    <script src="src/utils/IconManager.js"></script>
-    <script src="src/ui/components/buttons/Button.js"></script>
-    <script src="src/ui/components/layout/Card.js"></script>
-    <script src="src/ui/components/layout/Header.js"></script>
-    <script src="src/ui/view-manager.js"></script>
+    <!-- UI System v3.0 - RUTAS PARA DESARROLLO -->
+    <script src="public/utils/IconManager.js"></script>
+    <script src="public/ui/components/buttons/Button.js"></script>
+    <script src="public/ui/components/layout/Card.js"></script>
+    <script src="public/ui/components/layout/Header.js"></script>
+    <script src="public/ui/view-manager.js"></script>
 
     <style>
-        /* Estilos específicos de la aplicación */
+        /* Estilos especificos de la aplicacion */
         .app-layout {
             min-height: 100vh;
             background: var(--gradient-app-bg);
@@ -77,17 +83,17 @@
             }
         }
 
-        /* Estilos específicos del scanner */
+        /* Estilos especificos del scanner */
         .scanner-overlay {
-            background: linear-gradient(45deg, transparent 30%, rgba(59, 130, 246, 0.1) 50%, transparent 70%);
+            background: linear-gradient(45deg, transparent 30%, rgba(76, 139, 44, 0.1) 50%, transparent 70%);
             animation: scan 2s linear infinite;
         }
         
-        /* Splash screen específico */
+        /* Splash screen corporativo */
         .splash-screen {
             position: fixed;
             inset: 0;
-            background: var(--gradient-primary);
+            background: var(--gradient-splash-bg);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -101,17 +107,25 @@
         }
 
         .splash-logo {
-            width: 6rem;
-            height: 6rem;
-            background: rgba(255, 255, 255, 0.1);
+            width: 7rem;
+            height: 7rem;
+            background: var(--logo-bg-glass);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: var(--radius-3xl);
-            backdrop-filter: blur(8px);
+            backdrop-filter: var(--logo-backdrop);
             margin: 0 auto var(--spacing-6);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: var(--text-2xl);
-            font-weight: var(--font-bold);
+            padding: var(--spacing-4);
+            box-shadow: var(--shadow-2xl);
+        }
+
+        .splash-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: brightness(0) invert(1); /* Asegurar que el SVG sea blanco */
         }
 
         .splash-title {
@@ -119,12 +133,53 @@
             font-weight: var(--font-extrabold);
             margin: 0 0 var(--spacing-2) 0;
             letter-spacing: -0.025em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .splash-subtitle {
             font-size: var(--text-lg);
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.9);
             margin: 0;
+            font-weight: var(--font-medium);
+        }
+
+        /* Logo corporativo en home */
+        .home-logo {
+            width: 7rem;
+            height: 7rem;
+            background: var(--logo-bg-secondary);
+            border-radius: var(--radius-3xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--spacing-6);
+            padding: var(--spacing-4);
+            box-shadow: var(--shadow-lg);
+            border: 2px solid var(--color-primary-200);
+            transition: all var(--duration-normal) var(--ease-out);
+        }
+
+        .home-logo:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl), 0 0 30px rgba(76, 139, 44, 0.3);
+            border-color: var(--color-primary-300);
+        }
+
+        .home-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: brightness(0) invert(1); /* SVG blanco */
+        }
+
+        /* Fallback para logos cuando no hay imagen */
+        .logo-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: white;
         }
 
         /* Focus ring mejorado */
@@ -132,50 +187,83 @@
             outline: 2px solid var(--color-primary-500);
             outline-offset: 2px;
         }
+
+        /* Animacion corporativa para elementos destacados */
+        .corporate-pulse {
+            animation: corporateGlow 3s ease-in-out infinite;
+        }
+
+        /* CSS basico de respaldo para casos de error */
+        .btn-fallback {
+            padding: 1rem 2rem;
+            background: #4c8b2c;
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-fallback:hover {
+            background: #3d7022;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="font-primary" data-theme="light">
 
-    <!-- Splash Screen -->
+    <!-- Splash Screen Corporativo -->
     <div id="splash-screen" class="splash-screen fade-in">
         <div class="splash-content">
             <div class="splash-logo">
-                <span style="color: var(--color-primary-300);">M</span>
-                <span style="color: var(--color-primary-200); margin: 0 var(--spacing-1);">||</span>
-                <span style="color: var(--color-primary-100);">S</span>
+                <!-- Logo corporativo SVG blanco - RUTA PARA DESARROLLO -->
+                <img src="public/assets/images/logo300x157.svg" 
+                     alt="Logo Corporativo" 
+                     onerror="console.log('Logo no encontrado, usando fallback'); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="logo-fallback" style="display: none;">
+                    <span style="color: rgba(255,255,255,0.9);">M</span>
+                    <span style="color: rgba(255,255,255,0.7); margin: 0 8px;">||</span>
+                    <span style="color: rgba(255,255,255,0.5);">S</span>
+                </div>
             </div>
             <h1 class="splash-title">Mega||Scan</h1>
-            <p class="splash-subtitle">Cargando sistema híbrido...</p>
+            <p class="splash-subtitle">Cargando sistema hibrido...</p>
         </div>
     </div>
 
     <main id="app-root" class="app-layout">
         <div class="app-content">
-            <!-- El contenido se inyectará aquí -->
+            <!-- El contenido se inyectara aqui -->
         </div>
     </main>
 
     <script>
-        // Registrar Service Worker
+        // Registrar Service Worker - RUTA RELATIVA
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./public/sw.js')
-                    .then(registration => console.log('✅ SW registered'))
-                    .catch(error => console.log('❌ SW registration failed:', error));
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('public/sw.js')
+                    .then(function(registration) {
+                        console.log('SW registered');
+                    })
+                    .catch(function(error) {
+                        console.log('SW registration failed:', error);
+                    });
             });
         }
 
-        // --- CONFIGURACIÓN ---
-        const APP_CONFIG = {
-            VERSION: '3.0.0', // ACTUALIZADO: Nueva versión con Design System
+        // --- CONFIGURACION ---
+        var APP_CONFIG = {
+            VERSION: '3.0.0',
             NAME: 'Mega||Scan',
-            DESCRIPTION: 'La forma más rápida de obtener información de cualquier producto - Ahora con Design System v3.0'
+            DESCRIPTION: 'La forma mas rapida de obtener informacion de cualquier producto - Ahora con Design System v3.0'
         };
 
-        const SUPABASE_URL = 'https://srsedippxqjpetcfcaae.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyc2VkaXBweHFqcGV0Y2ZjYWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MjM0OTUsImV4cCI6MjA3MTA5OTQ5NX0.IoLvEbciO1u3UqEZcZhmgaSNYixlI8Thp75K_7CBGhw';
+        var SUPABASE_URL = 'https://srsedippxqjpetcfcaae.supabase.co';
+        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyc2VkaXBweHFqcGV0Y2ZjYWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MjM0OTUsImV4cCI6MjA3MTA5OTQ5NX0.IoLvEbciO1u3UqEZcZhmgaSNYixlI8Thp75K_7CBGhw';
        
-        let supabaseClient = null;
+        var supabaseClient = null;
         
         // Inicializar Supabase
         if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof supabase !== 'undefined') {
@@ -186,76 +274,81 @@
             }
         }
 
-        // --- ESTADO DE LA APLICACIÓN ---
-        let appState = 'HOME';
-        let scannedProduct = null;
-        let productMaterials = null;
-        let scanner = null;
-        let viewManager = null;
-        let lastScannedBarcode = null;
+        // --- ESTADO DE LA APLICACION ---
+        var appState = 'HOME';
+        var scannedProduct = null;
+        var productMaterials = null;
+        var scanner = null;
+        var viewManager = null;
+        var lastScannedBarcode = null;
         
         // NUEVO: Instancias del Design System
-        let iconManager = null;
-        let button = null;
-        let card = null;
-        let header = null;
+        var iconManager = null;
+        var button = null;
+        var card = null;
+        var header = null;
 
-        const appRoot = document.getElementById('app-root').querySelector('.app-content');
+        var appRoot = document.getElementById('app-root').querySelector('.app-content');
 
         // --- FUNCIONES AUXILIARES MEJORADAS ---
-        function showNotification(message, type = 'info') {
-            // Usar nuevo sistema de notificaciones (implementaremos después)
-            const criticalMessages = ['error', 'denegado', 'bloqueado', 'adblocker', 'conexión', 'red'];
-            const isCritical = criticalMessages.some(keyword => message.toLowerCase().includes(keyword));
+        function showNotification(message, type) {
+            type = type || 'info';
+            // Usar nuevo sistema de notificaciones (implementaremos despues)
+            var criticalMessages = ['error', 'denegado', 'bloqueado', 'adblocker', 'conexion', 'red'];
+            var isCritical = criticalMessages.some(function(keyword) {
+                return message.toLowerCase().includes(keyword);
+            });
             
             if (!isCritical && type !== 'error') {
-                console.log('📢 Notificación omitida (no crítica):', message);
+                console.log('Notificacion omitida (no critica):', message);
                 return;
             }
             
-            // Implementación temporal - mejoraremos con componentes
-            const notification = document.createElement('div');
-            const bgColor = type === 'error' ? 'var(--color-error-500)' : 
-                           type === 'success' ? 'var(--color-success-500)' : 
-                           'var(--color-info-500)';
+            // Implementacion temporal - mejoraremos con componentes
+            var notification = document.createElement('div');
+            var bgColor = type === 'error' ? '#ef4444' : 
+                         type === 'success' ? '#10b981' : 
+                         '#06b6d4';
             
-            notification.style.cssText = `
-                position: fixed;
-                top: var(--spacing-4);
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: var(--z-toast);
-                padding: var(--spacing-4);
-                border-radius: var(--radius-xl);
-                box-shadow: var(--shadow-lg);
-                background: ${bgColor};
-                color: white;
-                max-width: 20rem;
-                text-align: center;
-                font-size: var(--text-sm);
-                font-weight: var(--font-medium);
-                transition: all var(--duration-normal) var(--ease-out);
-            `;
+            notification.style.cssText = 
+                'position: fixed;' +
+                'top: 1rem;' +
+                'left: 50%;' +
+                'transform: translateX(-50%);' +
+                'z-index: 1080;' +
+                'padding: 1rem;' +
+                'border-radius: 0.75rem;' +
+                'box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);' +
+                'background: ' + bgColor + ';' +
+                'color: white;' +
+                'max-width: 20rem;' +
+                'text-align: center;' +
+                'font-size: 0.875rem;' +
+                'font-weight: 500;' +
+                'transition: all 0.3s ease;';
+            
             notification.textContent = message;
             
             document.body.appendChild(notification);
             
-            setTimeout(() => {
+            setTimeout(function() {
                 notification.style.opacity = '0';
                 notification.style.transform = 'translate(-50%, -100%)';
-                setTimeout(() => notification.remove(), 300);
+                setTimeout(function() {
+                    notification.remove();
+                }, 300);
             }, 4000);
         }
 
-        // --- GESTIÓN DE ESTADO Y NAVEGACIÓN ---
+        // --- GESTION DE ESTADO Y NAVEGACION ---
         function render() {
             try {
-                let viewData = {};
+                var viewData = {};
                 
-                // Preparar datos según el estado
+                // Preparar datos segun el estado
                 switch (appState) {
                     case 'SCANNER':
-                        const scannerStatus = scanner ? scanner.getStatus() : { cameraPermissionStatus: 'unknown' };
+                        var scannerStatus = scanner ? scanner.getStatus() : { cameraPermissionStatus: 'unknown' };
                         if (scanner && scanner.lastErrorMessage) {
                             scannerStatus.lastErrorMessage = scanner.lastErrorMessage;
                         }
@@ -285,32 +378,51 @@
                         viewData.barcode = lastScannedBarcode;
                         break;
                     case 'ERROR':
-                        viewData.message = 'Error técnico inesperado';
+                        viewData.message = 'Error tecnico inesperado';
                         break;
                 }
                 
-                // Renderizar usando ViewManager
-                appRoot.innerHTML = viewManager.render(appState, viewData);
+                // Renderizar usando ViewManager o fallback
+                if (viewManager && typeof viewManager.render === 'function') {
+                    appRoot.innerHTML = viewManager.render(appState, viewData);
+                } else {
+                    // Fallback basico si ViewManager no esta disponible
+                    renderFallback();
+                }
                 
                 // Post-render logic para scanner
                 if (appState === 'SCANNER' && scanner) {
-                    const status = scanner.getStatus();
+                    var status = scanner.getStatus();
                     if (status.cameraPermissionStatus === 'granted' && status.hasRequestedPermissionBefore) {
-                        setTimeout(() => scanner.initializeScanner(), 300);
+                        setTimeout(function() {
+                            scanner.initializeScanner();
+                        }, 300);
                     }
                 }
                 
             } catch (error) {
                 console.error('Error en render:', error);
-                appRoot.innerHTML = viewManager.render('ERROR', { message: 'Error inesperado en la aplicación' });
+                renderFallback();
             }
         }
 
-        // --- GESTIÓN DE EVENTOS ---
-        async function handleEvents(event) {
-            const action = event.target.closest('[data-action]')?.getAttribute('data-action');
-            if (!action) return;
+        function renderFallback() {
+            // Vista de respaldo si hay problemas con el sistema principal
+            appRoot.innerHTML = 
+                '<div style="padding: 2rem; text-align: center; color: #5e3326;">' +
+                '<h1 style="color: #4c8b2c; margin-bottom: 2rem; font-size: 2.5rem;">Mega||Scan</h1>' +
+                '<p style="margin-bottom: 2rem; font-size: 1.125rem;">La forma mas rapida de obtener informacion de cualquier producto</p>' +
+                '<button class="btn-fallback" onclick="alert(\'Scanner en desarrollo - verificando modulos...\')">Iniciar Escaner</button>' +
+                '<p style="margin-top: 2rem; font-size: 0.875rem; color: #64748b;">Version 3.0.0 - Modo de compatibilidad</p>' +
+                '</div>';
+        }
 
+        // --- GESTION DE EVENTOS ---
+        function handleEvents(event) {
+            var action = event.target.closest('[data-action]');
+            if (!action) return;
+            
+            action = action.getAttribute('data-action');
             event.preventDefault();
 
             try {
@@ -320,7 +432,7 @@
                         render();
                         break;
                     case 'activate-camera':
-                        await activateCamera();
+                        activateCamera();
                         break;
                     case 'go-home':
                         stopScanner();
@@ -331,7 +443,7 @@
                         render();
                         break;
                     case 'go-back':
-                        // Lógica de navegación hacia atrás
+                        // Logica de navegacion hacia atras
                         if (appState === 'MATERIALS') {
                             appState = 'PRODUCT';
                         } else if (appState === 'PRODUCT' || appState === 'SCANNER') {
@@ -357,58 +469,62 @@
                 }
             } catch (error) {
                 console.error('Error manejando evento:', error);
-                showNotification('Error procesando la acción', 'error');
+                showNotification('Error procesando la accion', 'error');
             }
         }
 
-        async function activateCamera() {
-            try {
-                await scanner.activateCamera();
+        function activateCamera() {
+            if (!scanner || typeof scanner.activateCamera !== 'function') {
+                showNotification('Scanner no disponible', 'error');
+                return;
+            }
+
+            scanner.activateCamera().then(function() {
                 render();
-                setTimeout(() => {
+                setTimeout(function() {
                     scanner.initializeScanner();
                 }, 500);
-            } catch (error) {
-                const errorMessage = scanner.getErrorMessage(error);
+            }).catch(function(error) {
+                var errorMessage = scanner.getErrorMessage ? scanner.getErrorMessage(error) : error.message;
                 scanner.lastErrorMessage = errorMessage;
                 
-                if (error.message === 'DESKTOP_NO_CAMERA' || errorMessage.includes('No se detectó ninguna cámara en este dispositivo')) {
-                    console.log('🖥️ Escritorio sin cámara detectado, mostrando input manual');
+                if (error.message === 'DESKTOP_NO_CAMERA' || errorMessage.includes('No se detecto ninguna camara en este dispositivo')) {
+                    console.log('Escritorio sin camara detectado, mostrando input manual');
                     scanner.cameraPermissionStatus = 'desktop_no_camera';
                     render();
                     return;
                 }
                 
-                setTimeout(() => {
+                setTimeout(function() {
                     appState = 'ERROR';
-                    appRoot.innerHTML = viewManager.render('ERROR', { message: errorMessage });
+                    render();
                 }, 2000);
-            }
+            });
         }
 
         function handleManualSubmit(event) {
             event.preventDefault();
-            const input = document.getElementById('barcode-input');
-            const barcode = input?.value?.trim();
+            var input = document.getElementById('barcode-input');
+            var barcode = input ? input.value.trim() : '';
             
             if (!barcode) {
-                showNotification('Por favor introduce un código', 'error');
+                showNotification('Por favor introduce un codigo', 'error');
                 return;
             }
 
             stopScanner();
             searchProduct(barcode);
-            input.value = '';
+            if (input) input.value = '';
         }
 
         function stopScanner() {
-            if (scanner) {
+            if (scanner && typeof scanner.stop === 'function') {
                 scanner.stop();
             }
         }
 
-        // --- FUNCIONES DE BÚSQUEDA MEJORADAS ---
-        async function searchProduct(barcode) {
+        // --- FUNCIONES DE BUSQUEDA MEJORADAS ---
+        function searchProduct(barcode) {
             appState = 'LOADING';
             lastScannedBarcode = barcode;
             render();
@@ -418,45 +534,56 @@
                     throw new Error('Base de datos no configurada');
                 }
 
-                const cleanBarcode = String(barcode).trim();
-                console.log('🔍 Buscando producto con código:', cleanBarcode);
+                var cleanBarcode = String(barcode).trim();
+                console.log('Buscando producto con codigo:', cleanBarcode);
 
-                const { data, error } = await supabaseClient
+                supabaseClient
                     .from('products')
                     .select('*')
                     .eq('Barcode', cleanBarcode)
-                    .single();
+                    .single()
+                    .then(function(response) {
+                        var data = response.data;
+                        var error = response.error;
 
-                if (error && error.code !== 'PGRST116') {
-                    throw error;
-                }
+                        if (error && error.code !== 'PGRST116') {
+                            throw error;
+                        }
 
-                if (data) {
-                    scannedProduct = {
-                        ...data,
-                        Code: data.Barcode,
-                        Name: data.Name,
-                        Description: data.Description,
-                        image_url: data.image_url,
-                        Status: data.Status || 'Activo'
-                    };
-                    appState = 'PRODUCT';
-                    console.log('✅ Producto encontrado:', scannedProduct);
-                } else {
-                    appState = 'PRODUCT_NOT_FOUND';
-                    console.log('❌ Producto no encontrado para código:', cleanBarcode);
-                }
-                
-                render();
+                        if (data) {
+                            scannedProduct = {
+                                id: data.id,
+                                Code: data.Barcode,
+                                Name: data.Name,
+                                Description: data.Description,
+                                image_url: data.image_url,
+                                Status: data.Status || 'Activo',
+                                Barcode: data.Barcode
+                            };
+                            appState = 'PRODUCT';
+                            console.log('Producto encontrado:', scannedProduct);
+                        } else {
+                            appState = 'PRODUCT_NOT_FOUND';
+                            console.log('Producto no encontrado para codigo:', cleanBarcode);
+                        }
+                        
+                        render();
+                    })
+                    .catch(function(error) {
+                        console.error('Error buscando producto:', error);
+                        appState = 'ERROR';
+                        render();
+                        showNotification('Error en la busqueda', 'error');
+                    });
             } catch (error) {
                 console.error('Error buscando producto:', error);
                 appState = 'ERROR';
                 render();
-                showNotification('Error en la búsqueda', 'error');
+                showNotification('Error en la busqueda', 'error');
             }
         }
 
-        async function loadProductMaterials(productId) {
+        function loadProductMaterials(productId) {
             try {
                 appState = 'LOADING';
                 render();
@@ -465,33 +592,40 @@
                     throw new Error('Base de datos no configurada');
                 }
 
-                console.log('🔍 Buscando materiales para producto ID:', productId);
+                console.log('Buscando materiales para producto ID:', productId);
 
-                const { data, error } = await supabaseClient
+                supabaseClient
                     .from('product_materials')
-                    .select(`
-                        material_id,
-                        materials (
-                            id,
-                            description
-                        )
-                    `)
-                    .eq('product_id', productId);
+                    .select('material_id, materials ( id, description )')
+                    .eq('product_id', productId)
+                    .then(function(response) {
+                        var data = response.data;
+                        var error = response.error;
 
-                if (error) {
-                    throw error;
-                }
+                        if (error) {
+                            throw error;
+                        }
 
-                productMaterials = data ? data.map(item => ({
-                    id: item.materials.id,
-                    Description: item.materials.description
-                })) : [];
+                        productMaterials = data ? data.map(function(item) {
+                            return {
+                                id: item.materials.id,
+                                Description: item.materials.description
+                            };
+                        }) : [];
 
-                appState = 'MATERIALS';
-                render();
-                
-                const count = productMaterials.length;
-                console.log(`✅ ${count} material${count !== 1 ? 'es' : ''} encontrado${count !== 1 ? 's' : ''}:`, productMaterials);
+                        appState = 'MATERIALS';
+                        render();
+                        
+                        var count = productMaterials.length;
+                        console.log(count + ' material' + (count !== 1 ? 'es' : '') + ' encontrado' + (count !== 1 ? 's' : '') + ':', productMaterials);
+                    })
+                    .catch(function(error) {
+                        console.error('Error cargando materiales:', error);
+                        productMaterials = [];
+                        appState = 'MATERIALS';
+                        render();
+                        showNotification('Error cargando materiales', 'error');
+                    });
             } catch (error) {
                 console.error('Error cargando materiales:', error);
                 productMaterials = [];
@@ -501,120 +635,113 @@
             }
         }
 
-        // --- INICIALIZACIÓN ---
+        // --- INICIALIZACION ---
         function hideSplashScreen() {
-            const splash = document.getElementById('splash-screen');
+            var splash = document.getElementById('splash-screen');
             if (splash) {
                 splash.style.opacity = '0';
-                setTimeout(() => splash.remove(), 500);
+                setTimeout(function() {
+                    splash.remove();
+                }, 500);
             }
         }
 
-        async function initApp() {
-            console.log('🚀 Inicializando aplicación con Design System v3.0...');
+        function initApp() {
+            console.log('Inicializando aplicacion con Design System v3.0...');
             
-            // Inicializar Design System
-            iconManager = new IconManager();
-            button = Button;
-            card = Card;
-            header = Header;
-            
-            // Inicializar ViewManager
-            viewManager = new ViewManager(APP_CONFIG);
-            
-            // Crear instancia del escáner
-            scanner = new ScannerModule();
-            
-            // Configurar callbacks del scanner
-            scanner.setCallbacks({
-                onScanSuccess: (decodedText, decodedResult) => {
-                    console.log('🎯 Escaneo exitoso con:', decodedResult.engine || 'motor desconocido');
-                    searchProduct(decodedText);
-                },
-                onScanError: (error, message) => {
-                    if (message.includes('adblocker') || message.includes('conexión') || message.includes('permisos')) {
-                        showNotification(message, 'error');
-                    }
-                },
-                onStatusUpdate: (message) => {
-                    const statusElement = document.getElementById('scanner-status');
-                    if (statusElement) {
-                        statusElement.textContent = message;
-                    }
-                },
-                onPermissionChange: (status) => {
-                    console.log('Permisos cambiaron a:', status);
-                    if (appState === 'SCANNER') {
+            try {
+                // Verificar dependencias del Design System
+                if (typeof IconManager !== 'undefined') {
+                    iconManager = new IconManager();
+                }
+                if (typeof Button !== 'undefined') {
+                    button = Button;
+                }
+                if (typeof Card !== 'undefined') {
+                    card = Card;
+                }
+                if (typeof Header !== 'undefined') {
+                    header = Header;
+                }
+                if (typeof ViewManager !== 'undefined') {
+                    viewManager = new ViewManager(APP_CONFIG);
+                }
+                if (typeof ScannerModule !== 'undefined') {
+                    scanner = new ScannerModule();
+                    
+                    // Configurar callbacks del scanner
+                    scanner.setCallbacks({
+                        onScanSuccess: function(decodedText, decodedResult) {
+                            console.log('Escaneo exitoso con:', decodedResult.engine || 'motor desconocido');
+                            searchProduct(decodedText);
+                        },
+                        onScanError: function(error, message) {
+                            if (message.includes('adblocker') || message.includes('conexion') || message.includes('permisos')) {
+                                showNotification(message, 'error');
+                            }
+                        },
+                        onStatusUpdate: function(message) {
+                            var statusElement = document.getElementById('scanner-status');
+                            if (statusElement) {
+                                statusElement.textContent = message;
+                            }
+                        },
+                        onPermissionChange: function(status) {
+                            console.log('Permisos cambiaron a:', status);
+                            if (appState === 'SCANNER') {
+                                render();
+                            }
+                        }
+                    });
+                    
+                    // Verificar permisos persistentes
+                    if (typeof scanner.checkPersistedPermissions === 'function') {
+                        scanner.checkPersistedPermissions().then(function() {
+                            setTimeout(hideSplashScreen, 1500);
+                            render();
+                        }).catch(function() {
+                            setTimeout(hideSplashScreen, 1500);
+                            render();
+                        });
+                    } else {
+                        setTimeout(hideSplashScreen, 1500);
                         render();
                     }
+                } else {
+                    console.warn('ScannerModule no disponible, usando modo fallback');
+                    setTimeout(hideSplashScreen, 1500);
+                    render();
                 }
-            });
-            
-            // Verificar permisos persistentes
-            await scanner.checkPersistedPermissions();
-            
-            // Ocultar splash screen y mostrar app
-            setTimeout(hideSplashScreen, 1500);
-            render();
+                
+            } catch (error) {
+                console.error('Error en inicializacion:', error);
+                setTimeout(hideSplashScreen, 1500);
+                render();
+            }
             
             // Configurar event listeners
             document.addEventListener('click', handleEvents);
             document.addEventListener('submit', handleEvents);
             
-            window.addEventListener('popstate', () => {
+            window.addEventListener('popstate', function() {
                 stopScanner();
                 appState = 'HOME';
                 render();
             });
             
-            document.addEventListener('visibilitychange', () => {
+            document.addEventListener('visibilitychange', function() {
                 if (document.hidden) {
                     stopScanner();
                 }
             });
             
-            window.addEventListener('beforeunload', () => {
-                if (scanner) {
+            window.addEventListener('beforeunload', function() {
+                if (scanner && typeof scanner.destroy === 'function') {
                     scanner.destroy();
                 }
             });
             
-            console.log('✅ Aplicación inicializada con Design System v3.0');
-            
-            // Debug info mejorado
-            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-                console.log('🛠️ MODO DEBUG ACTIVADO');
-                
-                setTimeout(async () => {
-                    try {
-                        const engineInfo = scanner.getEngineInfo();
-                        if (engineInfo) {
-                            console.log('🔧 Motor de escaneo:', engineInfo.name);
-                            console.log('⚡ Rendimiento:', engineInfo.performance);
-                            console.log('🎨 Design System v3.0 activo');
-                            console.log('📱 Icons disponibles:', iconManager.list());
-                        }
-                    } catch (e) {
-                        console.log('ℹ️ Información del motor disponible después de la primera inicialización');
-                    }
-                }, 2000);
-                
-                // Función de debug global
-                window.debugMegaScan = () => {
-                    console.log('=== 🛠️ MEGA SCAN DEBUG INFO v3.0 ===');
-                    console.log('Motor actual:', scanner.getEngineInfo());
-                    console.log('Estado:', scanner.getStatus());
-                    console.log('Estadísticas:', scanner.getDetailedStats());
-                    console.log('Design System:', {
-                        iconManager: iconManager,
-                        availableIcons: iconManager.list(),
-                        components: { button, card, header }
-                    });
-                    console.log('=== FIN DEBUG INFO ===');
-                };
-                
-                console.log('💡 Tip: Ejecuta debugMegaScan() en consola para información completa');
-            }
+            console.log('Aplicacion inicializada con Design System v3.0');
         }
 
         if (document.readyState === 'loading') {
